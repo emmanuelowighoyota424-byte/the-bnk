@@ -1,0 +1,427 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  phone         String?
+  passwordHash  String   @map("password_hash")
+  bnkTag        String?  @unique @map("bnk_tag")
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  dateOfBirth   DateTime? @map("date_of_birth")
+  ssnLast4      String?  @map("ssn_last4")
+  kycStatus     String   @default("pending") @map("kyc_status")
+  kycTier       Int      @default(0) @map("kyc_tier")
+  riskScore     Int      @default(0) @map("risk_score")
+  status        String   @default("active")
+  profileImage  String?  @map("profile_image")
+  addressLine1  String?  @map("address_line1")
+  addressLine2  String?  @map("address_line2")
+  city          String?
+  state         String?
+  zipCode       String?  @map("zip_code")
+  country       String?  @default("US")
+  totpSecret    String?  @map("totp_secret")
+  totpEnabled   Boolean  @default(false) @map("totp_enabled")
+  sms2faEnabled Boolean  @default(false) @map("sms_2fa_enabled")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  sessions       UserSession[]
+  kycDocuments   KYCDocument[]
+  accounts       Account[]
+  transactions   Transaction[]
+  cards          Card[]
+  portfolios     InvestmentPortfolio[]
+  savingsGoals   SavingsGoal[]
+  recurringXfers RecurringTransfer[]
+  billPayees     BillPayee[]
+  scheduledPays  ScheduledPayment[]
+  fraudAlerts    FraudAlert[]
+  disputes       Dispute[]
+
+  @@map("users")
+}
+
+model UserSession {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  refreshTokenHash String   @map("refresh_token_hash")
+  deviceInfo       Json?    @map("device_info")
+  ipAddress        String?  @map("ip_address")
+  location         String?  @map("location")
+  expiresAt        DateTime @map("expires_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  revokedAt        DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model KYCDocument {
+  id                  String    @id @default(uuid())
+  userId              String    @map("user_id")
+  docType             String    @map("doc_type")
+  docFrontUrl         String?   @map("doc_front_url")
+  docBackUrl          String?   @map("doc_back_url")
+  selfieUrl           String?   @map("selfie_url")
+  ocrData             Json?     @map("ocr_data")
+  verificationStatus  String    @default("pending") @map("verification_status")
+  reviewerId          String?   @map("reviewer_id")
+  reviewNotes         String?   @map("review_notes")
+  reviewedAt          DateTime? @map("reviewed_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewer AdminUser? @relation(fields: [reviewerId], references: [id])
+
+  @@map("kyc_documents")
+}
+
+model Account {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  accountType      String   @map("account_type")
+  accountNumber    String   @unique @map("account_number")
+  routingNumber    String   @default("021000021") @map("routing_number")
+  balance          Decimal  @default(0) @db.Decimal(18, 2)
+  availableBalance Decimal  @default(0) @map("available_balance") @db.Decimal(18, 2)
+  currency         String   @default("USD")
+  status           String   @default("active")
+  interestRate     Decimal? @map("interest_rate") @db.Decimal(5, 4)
+  openedAt         DateTime @default(now()) @map("opened_at")
+  closedAt         DateTime? @map("closed_at")
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+  cards            Card[]
+  savingsGoals     SavingsGoal[]
+  recurringFrom    RecurringTransfer[] @relation("FromAccount")
+  recurringTo      RecurringTransfer[] @relation("ToAccount")
+  scheduledPayments ScheduledPayment[]
+
+  @@map("accounts")
+}
+
+model Transaction {
+  id                String    @id @default(uuid())
+  accountId         String    @map("account_id")
+  userId            String    @map("user_id")
+  txType            String    @map("tx_type")
+  amount            Decimal   @db.Decimal(18, 2)
+  currency          String    @default("USD")
+  description       String?
+  merchantName      String?   @map("merchant_name")
+  merchantCategory  String?   @map("merchant_category")
+  category          String?
+  status            String    @default("pending")
+  runningBalance    Decimal?  @map("running_balance") @db.Decimal(18, 2)
+  referenceId       String?   @map("reference_id")
+  idempotencyKey    String?   @unique @map("idempotency_key")
+  ipAddress         String?   @map("ip_address")
+  deviceFingerprint String?   @map("device_fingerprint")
+  geoLocation       Json?     @map("geo_location")
+  riskScore         Int?      @map("risk_score")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  settledAt         DateTime? @map("settled_at")
+
+  account     Account      @relation(fields: [accountId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+  disputes    Dispute[]
+  fraudAlerts FraudAlert[]
+  tags        TransactionTag[]
+
+  @@map("transactions")
+}
+
+model TransactionTag {
+  id            String   @id @default(uuid())
+  transactionId String   @map("transaction_id")
+  tag           String
+  setBy         String   @map("set_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("transaction_tags")
+}
+
+model Card {
+  id                   String    @id @default(uuid())
+  userId               String    @map("user_id")
+  accountId            String    @map("account_id")
+  cardType             String    @map("card_type")
+  cardNetwork          String    @default("visa") @map("card_network")
+  lastFour             String    @map("last_four")
+  expiryMonth          Int       @map("expiry_month")
+  expiryYear           Int       @map("expiry_year")
+  cardToken            String?   @map("card_token")
+  stripeCardId         String?   @map("stripe_card_id")
+  status               String    @default("active")
+  isVirtual            Boolean   @default(false) @map("is_virtual")
+  merchantLock         String?   @map("merchant_lock")
+  spendingLimitDaily   Decimal?  @map("spending_limit_daily") @db.Decimal(10, 2)
+  spendingLimitMonthly Decimal?  @map("spending_limit_monthly") @db.Decimal(10, 2)
+  cashbackRate         Decimal?  @default(1.0) @map("cashback_rate") @db.Decimal(5, 2)
+  activatedAt          DateTime? @map("activated_at")
+  expiresAt            DateTime? @map("expires_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+
+  user     User         @relation(fields: [userId], references: [id])
+  account  Account      @relation(fields: [accountId], references: [id])
+  controls CardControl?
+
+  @@map("cards")
+}
+
+model CardControl {
+  id                   String   @id @default(uuid())
+  cardId               String   @unique @map("card_id")
+  internationalEnabled Boolean  @default(true) @map("international_enabled")
+  onlineEnabled        Boolean  @default(true) @map("online_enabled")
+  atmEnabled           Boolean  @default(true) @map("atm_enabled")
+  contactlessEnabled   Boolean  @default(true) @map("contactless_enabled")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@map("card_controls")
+}
+
+model InvestmentPortfolio {
+  id               String    @id @default(uuid())
+  userId           String    @map("user_id")
+  name             String
+  riskScore        Int       @map("risk_score")
+  targetAllocation Json      @map("target_allocation")
+  currentValue     Decimal   @default(0) @map("current_value") @db.Decimal(18, 2)
+  totalReturnPct   Decimal?  @map("total_return_pct") @db.Decimal(8, 4)
+  status           String    @default("active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  rebalanceNextAt  DateTime? @map("rebalance_next_at")
+
+  user     User                @relation(fields: [userId], references: [id])
+  holdings InvestmentHolding[]
+  orders   InvestmentOrder[]
+
+  @@map("investment_portfolios")
+}
+
+model InvestmentHolding {
+  id            String   @id @default(uuid())
+  portfolioId   String   @map("portfolio_id")
+  ticker        String
+  assetClass    String   @map("asset_class")
+  shares        Decimal  @db.Decimal(18, 8)
+  avgCostBasis  Decimal  @map("avg_cost_basis") @db.Decimal(18, 4)
+  currentPrice  Decimal  @map("current_price") @db.Decimal(18, 4)
+  currentValue  Decimal  @map("current_value") @db.Decimal(18, 2)
+  allocationPct Decimal  @map("allocation_pct") @db.Decimal(8, 4)
+  lastUpdated   DateTime @default(now()) @map("last_updated")
+
+  portfolio InvestmentPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@map("investment_holdings")
+}
+
+model InvestmentOrder {
+  id            String    @id @default(uuid())
+  portfolioId   String    @map("portfolio_id")
+  ticker        String
+  orderType     String    @map("order_type")
+  shares        Decimal   @db.Decimal(18, 8)
+  pricePerShare Decimal   @map("price_per_share") @db.Decimal(18, 4)
+  totalAmount   Decimal   @map("total_amount") @db.Decimal(18, 2)
+  status        String    @default("pending")
+  filledAt      DateTime? @map("filled_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  portfolio InvestmentPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@map("investment_orders")
+}
+
+model SavingsGoal {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  linkedAccountId  String?  @map("linked_account_id")
+  name             String
+  targetAmount     Decimal  @map("target_amount") @db.Decimal(18, 2)
+  currentAmount    Decimal  @default(0) @map("current_amount") @db.Decimal(18, 2)
+  targetDate       DateTime? @map("target_date")
+  category         String?
+  icon             String?
+  status           String   @default("active")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id])
+  account Account? @relation(fields: [linkedAccountId], references: [id])
+
+  @@map("savings_goals")
+}
+
+model RecurringTransfer {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  fromAccountId  String    @map("from_account_id")
+  toAccountId    String    @map("to_account_id")
+  amount         Decimal   @db.Decimal(18, 2)
+  frequency      String
+  nextRunAt      DateTime  @map("next_run_at")
+  status         String    @default("active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user        User    @relation(fields: [userId], references: [id])
+  fromAccount Account @relation("FromAccount", fields: [fromAccountId], references: [id])
+  toAccount   Account @relation("ToAccount", fields: [toAccountId], references: [id])
+
+  @@map("recurring_transfers")
+}
+
+model BillPayee {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  name           String
+  accountNumber  String   @map("account_number")
+  routingNumber  String   @map("routing_number")
+  address        Json?
+  category       String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user     User               @relation(fields: [userId], references: [id])
+  payments ScheduledPayment[]
+
+  @@map("bill_payees")
+}
+
+model ScheduledPayment {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  payeeId       String    @map("payee_id")
+  fromAccountId String    @map("from_account_id")
+  amount        Decimal   @db.Decimal(18, 2)
+  frequency     String
+  nextRunAt     DateTime  @map("next_run_at")
+  memo          String?
+  status        String    @default("active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user        User       @relation(fields: [userId], references: [id])
+  payee       BillPayee  @relation(fields: [payeeId], references: [id])
+  fromAccount Account    @relation(fields: [fromAccountId], references: [id])
+
+  @@map("scheduled_payments")
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  displayName  String    @map("display_name")
+  roleId       String    @map("role_id")
+  status       String    @default("active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  role         Role          @relation(fields: [roleId], references: [id])
+  kycReviews   KYCDocument[]
+  fraudReviews FraudAlert[]  @relation("AssignedFraudAlerts")
+
+  @@map("admin_users")
+}
+
+model Role {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String?
+  permissions Json
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  admins AdminUser[]
+
+  @@map("roles")
+}
+
+model FraudRule {
+  id          String    @id @default(uuid())
+  name        String
+  ruleType    String    @map("rule_type")
+  conditions  Json
+  action      String
+  severity    String    @default("medium")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdBy   String?   @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("fraud_rules")
+}
+
+model FraudAlert {
+  id              String    @id @default(uuid())
+  transactionId   String    @map("transaction_id")
+  userId          String    @map("user_id")
+  ruleId          String?   @map("rule_id")
+  riskScore       Int       @default(0) @map("risk_score")
+  severity        String    @default("low")
+  status          String    @default("open")
+  assignedTo      String?   @map("assigned_to")
+  resolutionNotes String?   @map("resolution_notes")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  resolvedAt      DateTime? @map("resolved_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+  assigned    AdminUser?  @relation("AssignedFraudAlerts", fields: [assignedTo], references: [id])
+
+  @@map("fraud_alerts")
+}
+
+model Dispute {
+  id                String    @id @default(uuid())
+  transactionId     String    @map("transaction_id")
+  userId            String    @map("user_id")
+  reasonCode        String    @map("reason_code")
+  description       String
+  status            String    @default("open")
+  provisionalCredit Boolean   @default(false) @map("provisional_credit")
+  resolution        String?   @map("resolution")
+  assignedTo        String?   @map("assigned_to")
+  deadlineAt        DateTime? @map("deadline_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  resolvedAt        DateTime? @map("resolved_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@map("disputes")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String   @map("actor_id")
+  actorType  String   @map("actor_type")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  changes    Json?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
