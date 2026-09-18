@@ -34,4 +34,6 @@ jobs:
             git push origin HEAD:main
           fi
       - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test
       - run: npm run build
