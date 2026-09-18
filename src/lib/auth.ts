@@ -60,7 +60,27 @@ export function setTokenCookie(name: string, token: string, maxAge: number) {
   });
 }
 
-export async function getCurrentUser() {\n  const token = getTokenFromCookie('access_token');\n  if (!token) return null;\n  const payload = await verifyAccessToken(token);\n  if (!payload?.sub) return null;\n  const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { id: true, email: true, status: true, firstName: true, lastName: true } });\n  if (!user || user.status !== 'active') return null;\n  return user;\n}\n\nexport async function getCurrentAdmin() {\n  const token = getTokenFromCookie('access_token');\n  if (!token) return null;\n  const payload = await verifyAccessToken(token);\n  if (!payload?.sub || payload.role !== 'admin') return null;\n  const admin = await prisma.adminUser.findUnique({ where: { id: payload.sub }, include: { role: true } });\n  if (!admin || admin.status !== 'active') return null;\n  return admin;\n}\n\nexport function getTokenFromCookie(name: string): string | undefined {
+export async function getCurrentUser() {
+  const token = getTokenFromCookie('access_token');
+  if (!token) return null;
+  const payload = await verifyAccessToken(token);
+  if (!payload?.sub) return null;
+  const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { id: true, email: true, status: true, firstName: true, lastName: true } });
+  if (!user || user.status !== 'active') return null;
+  return user;
+}
+
+export async function getCurrentAdmin() {
+  const token = getTokenFromCookie('access_token');
+  if (!token) return null;
+  const payload = await verifyAccessToken(token);
+  if (!payload?.sub || payload.role !== 'admin') return null;
+  const admin = await prisma.adminUser.findUnique({ where: { id: payload.sub }, include: { role: true } });
+  if (!admin || admin.status !== 'active') return null;
+  return admin;
+}
+
+export function getTokenFromCookie(name: string): string | undefined {
   const cookieStore = cookies();
   return cookieStore.get(name)?.value;
 }
