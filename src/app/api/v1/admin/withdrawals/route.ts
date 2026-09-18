@@ -1,0 +1,1 @@
+import {NextRequest} from 'next/server'; import prisma from '@/lib/prisma'; import {successResponse,unauthorizedResponse} from '@/lib/api-utils'; export async function GET(req:NextRequest){const adminId=req.headers.get('x-user-id');if(!adminId)return unauthorizedResponse();return successResponse(await prisma.withdrawal.findMany({orderBy:{createdAt:'desc'},take:100}))}
