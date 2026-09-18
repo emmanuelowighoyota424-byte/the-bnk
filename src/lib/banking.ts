@@ -19,6 +19,7 @@ export async function transferFunds(userId:string, input:{senderAccountId:string
     if(recipient.status!=='active') throw new Error('Recipient account is not active');
     if(sender.id===recipient.id) throw new Error('Self transfers are not allowed');
     const total=amount;
+    const description=input.description;
     const reference=ref('TRF');
     const transfer=await tx.transfer.create({data:{senderAccountId:sender.id,recipientAccountId:recipient.id,senderUserId:userId,recipientUserId:recipient.userId,amount,fee:0,totalDebit:total,currency:sender.currency,description,status:'completed',reference,idempotencyKey:input.idempotencyKey,completedAt:new Date()}});
     const reserved=await tx.account.updateMany({where:{id:sender.id,status:'active',availableBalance:{gte:total}},data:{balance:{decrement:total},availableBalance:{decrement:total}}});
@@ -55,6 +56,7 @@ export async function createWithdrawal(userId:string,input:{accountId:string;amo
  const amount=money(input.amount); if(amount.lte(0)) throw new Error('Amount must be greater than zero');
  const account=await prisma.account.findFirst({where:{id:input.accountId,userId}});
  if(!account) throw new Error('Account not found'); if(account.status!=='active') throw new Error('Account is not active');
+ const destination=input.destination;
  const withdrawal=await prisma.withdrawal.create({data:{accountId:account.id,userId,amount,currency:account.currency,destination,reference:ref('WDR'),status:'pending',description:input.description}});
  await prisma.notification.create({data:{userId,type:'WITHDRAWAL_SUBMITTED',title:'Withdrawal submitted',message:`Your $${amount.toFixed(2)} withdrawal request is pending approval.`}});
  await logAudit({actorId:userId,actorType:'user',action:'withdrawal.created',entityType:'withdrawal',entityId:withdrawal.id});
