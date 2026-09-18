@@ -1,7 +1,7 @@
 export type Permission =
   | 'users.read' | 'users.write' | 'users.suspend'
   | 'kyc.review' | 'kyc.approve' | 'kyc.reject'
-  | 'transactions.read' | 'transactions.adjust'
+  | 'transactions.read' | 'transactions.adjust'\n  | 'withdrawals.manage' | 'deposits.manage'
   | 'cards.read' | 'cards.manage'
   | 'disputes.read' | 'disputes.manage' | 'disputes.resolve'
   | 'fraud.alerts.read' | 'fraud.alerts.manage' | 'fraud.rules.manage'
