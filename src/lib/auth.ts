@@ -49,7 +49,11 @@ export async function verifyAccessToken(token: string): Promise<TokenPayload | n
   return verifyToken(token, ACCESS_SECRET);
 }
 
-export async function verifyRefreshToken(token: string): Promise<TokenPayload | null> {\n  return verifyToken(token, REFRESH_SECRET);\n}\n\nexport function setTokenCookie(name: string, token: string, maxAge: number) {
+export async function verifyRefreshToken(token: string): Promise<TokenPayload | null> {
+  return verifyToken(token, REFRESH_SECRET);
+}
+
+export function setTokenCookie(name: string, token: string, maxAge: number) {
   const cookieStore = cookies();
   cookieStore.set(name, token, {
     httpOnly: true,
