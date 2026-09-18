@@ -39,7 +39,7 @@ CREATE TABLE "user_sessions" (
     "location" TEXT,
     "expires_at" TIMESTAMP(3) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "revoked_at" TIMESTAMP(3),
+    "revokedAt" TIMESTAMP(3),
 
     CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("id")
 );
@@ -100,6 +100,7 @@ CREATE TABLE "transactions" (
     "device_fingerprint" TEXT,
     "geo_location" JSONB,
     "risk_score" INTEGER,
+    "journal_id" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "settled_at" TIMESTAMP(3),
 
@@ -197,7 +198,7 @@ CREATE TABLE "investment_orders" (
     "price_per_share" DECIMAL(18,4) NOT NULL,
     "total_amount" DECIMAL(18,2) NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'pending',
-    "filled_at" TIMESTAMP(3),
+    "filledAt" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "investment_orders_pkey" PRIMARY KEY ("id")
@@ -338,7 +339,7 @@ CREATE TABLE "disputes" (
     "assigned_to" TEXT,
     "deadline_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "resolved_at" TIMESTAMP(3),
+    "resolvedAt" TIMESTAMP(3),
 
     CONSTRAINT "disputes_pkey" PRIMARY KEY ("id")
 );
@@ -466,6 +467,9 @@ CREATE UNIQUE INDEX "accounts_account_number_key" ON "accounts"("account_number"
 CREATE UNIQUE INDEX "transactions_idempotency_key_key" ON "transactions"("idempotency_key");
 
 -- CreateIndex
+CREATE INDEX "transactions_journal_id_idx" ON "transactions"("journal_id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "card_controls_card_id_key" ON "card_controls"("card_id");
 
 -- CreateIndex
@@ -511,10 +515,16 @@ CREATE UNIQUE INDEX "deposits_reference_key" ON "deposits"("reference");
 CREATE INDEX "deposits_user_id_created_at_idx" ON "deposits"("user_id", "created_at");
 
 -- CreateIndex
+CREATE INDEX "deposits_account_id_created_at_idx" ON "deposits"("account_id", "created_at");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "withdrawals_reference_key" ON "withdrawals"("reference");
 
 -- CreateIndex
 CREATE INDEX "withdrawals_user_id_status_created_at_idx" ON "withdrawals"("user_id", "status", "created_at");
+
+-- CreateIndex
+CREATE INDEX "withdrawals_account_id_status_created_at_idx" ON "withdrawals"("account_id", "status", "created_at");
 
 -- CreateIndex
 CREATE INDEX "notifications_user_id_readAt_created_at_idx" ON "notifications"("user_id", "readAt", "created_at");
@@ -559,7 +569,7 @@ ALTER TABLE "investment_portfolios" ADD CONSTRAINT "investment_portfolios_user_i
 ALTER TABLE "investment_holdings" ADD CONSTRAINT "investment_holdings_portfolio_id_fkey" FOREIGN KEY ("portfolio_id") REFERENCES "investment_portfolios"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "investment_orders" ADD CONSTRAINT "investment_orders_portfolio_id_fkey" FOREIGN KEY ("portfolio_id") REFERENCES "investment_portfolios"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "investment_orders" ADD CONSTRAINT "investment_orders_portfolio_id_fkey" FOREIGN KEY ("portfolio_id") REFERENCES "investment_portfolios"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "savings_goals" ADD CONSTRAINT "savings_goals_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -611,4 +621,22 @@ ALTER TABLE "ledger_entries" ADD CONSTRAINT "ledger_entries_transaction_id_fkey"
 
 -- AddForeignKey
 ALTER TABLE "ledger_entries" ADD CONSTRAINT "ledger_entries_account_id_fkey" FOREIGN KEY ("account_id") REFERENCES "accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "deposits" ADD CONSTRAINT "deposits_account_id_fkey" FOREIGN KEY ("account_id") REFERENCES "accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "deposits" ADD CONSTRAINT "deposits_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "withdrawals" ADD CONSTRAINT "withdrawals_account_id_fkey" FOREIGN KEY ("account_id") REFERENCES "accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "withdrawals" ADD CONSTRAINT "withdrawals_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "security_events" ADD CONSTRAINT "security_events_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
