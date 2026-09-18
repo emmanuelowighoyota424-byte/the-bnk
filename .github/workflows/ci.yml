@@ -19,5 +19,11 @@ jobs:
       - run: npm install
       - run: npx prisma validate
       - run: npx prisma generate
+      - name: Generate production migration artifact
+        run: mkdir -p prisma/migrations/0001_init && npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/0001_init/migration.sql
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crestline-prisma-migration
+          path: prisma/migrations/0001_init/migration.sql
       - run: npx tsc --noEmit
       - run: npm run build
