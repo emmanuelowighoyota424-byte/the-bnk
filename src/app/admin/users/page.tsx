@@ -18,9 +18,9 @@ export default function AdminUsersPage() {
       const res = await fetch(`/api/v1/admin/users?${params}`);
       if (res.ok) { const data = await res.json(); if (data.success) { setUsers(data.data.users); setTotalPages(data.data.pagination.totalPages); } }
     } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetchUsers(search, page); }, [page]);
+  useEffect(() => { fetchUsers(search, page); }, [fetchUsers, search, page]);
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); };
 
