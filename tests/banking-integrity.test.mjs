@@ -7,20 +7,29 @@ const adminWithdrawal = fs.readFileSync('src/app/api/v1/admin/withdrawals/[id]/r
 const auth = fs.readFileSync('src/lib/auth.ts', 'utf8');
 const middleware = fs.readFileSync('src/middleware.ts', 'utf8');
 
-test('transfer service uses a database transaction and idempotency key', () => {
+
+test('financial service uses one serializable database transaction and idempotency', () => {
   assert.match(banking, /prisma\.\$transaction/);
-  assert.match(banking, /findUnique\(\{where:\{idempotencyKey/);
+  assert.match(banking, /TransactionIsolationLevel\.Serializable/);
+  assert.match(banking, /findUnique\(\{ where: \{ idempotencyKey:/);
   assert.match(banking, /idempotencyKey/);
 });
 
-test('transfer and withdrawal paths use conditional balance updates', () => {
-  assert.match(banking, /availableBalance:\{gte:total\}/);
-  assert.match(adminWithdrawal, /availableBalance:\{gte:w\.amount\}/);
+test('authoritative posting uses conditional balance protection', () => {
+  assert.match(banking, /availableBalance: \{ gte: input\.amount \}/);
+  assert.match(banking, /balance: \{ decrement: input\.amount \}/);
+  assert.match(banking, /balance: \{ increment: input\.amount \}/);
+  assert.match(adminWithdrawal, /approveWithdrawal/);
+  assert.doesNotMatch(adminWithdrawal, /\.account\.(update|updateMany)/);
 });
 
-test('financial movements write ledger entries', () => {
-  assert.match(banking, /ledgerEntry\.create/);
-  assert.match(banking, /ledgerEntry\.createMany/);
+test('financial movements are journal-backed with two persisted ledger sides', () => {
+  assert.match(banking, /postJournal\(/);
+  assert.match(banking, /financial_journals/);
+  assert.match(banking, /ledger_entries/);
+  assert.match(banking, /'DEBIT'/);
+  assert.match(banking, /'CREDIT'/);
+  assert.match(banking, /journal_id/);
 });
 
 test('production authentication refuses missing weak JWT secrets', () => {
@@ -35,6 +44,6 @@ test('middleware derives request identity from the signed access-token cookie', 
   assert.match(middleware, /requestHeaders\.set\('x-user-id', payload\.sub\)/);
 });
 
-test('Prisma migration is committed', () => {
-  assert.equal(fs.existsSync('prisma/migrations/0001_init/migration.sql'), true);
+test('financial hardening migration is committed', () => {
+  assert.equal(fs.existsSync('prisma/migrations/0003_financial_journal_hardening/migration.sql'), true);
 });
