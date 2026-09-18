@@ -16,7 +16,7 @@ model User {
   firstName     String   @map("first_name")
   lastName      String   @map("last_name")
   dateOfBirth   DateTime? @map("date_of_birth")
-  ssnLast4      String?  @map("ssn_last4")
+  ssnLast4      String?   @map("ssn_last4")
   kycStatus     String   @default("pending") @map("kyc_status")
   kycTier       Int      @default(0) @map("kyc_tier")
   riskScore     Int      @default(0) @map("risk_score")
@@ -38,6 +38,9 @@ model User {
   kycDocuments   KYCDocument[]
   accounts       Account[]
   transactions   Transaction[]
+  deposits       Deposit[]
+  withdrawals    Withdrawal[]
+  notifications  Notification[]
   cards          Card[]
   portfolios     InvestmentPortfolio[]
   savingsGoals   SavingsGoal[]
@@ -78,7 +81,7 @@ model KYCDocument {
   reviewerId          String?   @map("reviewer_id")
   reviewNotes         String?   @map("review_notes")
   reviewedAt          DateTime? @map("reviewed_at")
-  createdAt           DateTime  @default(now()) @map("created_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
 
   user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviewer AdminUser? @relation(fields: [reviewerId], references: [id])
@@ -100,13 +103,15 @@ model Account {
   openedAt         DateTime @default(now()) @map("opened_at")
   closedAt         DateTime? @map("closed_at")
 
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions     Transaction[]
-  ledgerEntries    LedgerEntry[]
-  cards            Card[]
-  savingsGoals     SavingsGoal[]
-  recurringFrom    RecurringTransfer[] @relation("FromAccount")
-  recurringTo      RecurringTransfer[] @relation("ToAccount")
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions      Transaction[]
+  ledgerEntries     LedgerEntry[]
+  deposits          Deposit[]
+  withdrawals       Withdrawal[]
+  cards             Card[]
+  savingsGoals      SavingsGoal[]
+  recurringFrom     RecurringTransfer[] @relation("FromAccount")
+  recurringTo       RecurringTransfer[] @relation("ToAccount")
   scheduledPayments ScheduledPayment[]
 
   @@map("accounts")
@@ -131,16 +136,18 @@ model Transaction {
   deviceFingerprint String?   @map("device_fingerprint")
   geoLocation       Json?     @map("geo_location")
   riskScore         Int?      @map("risk_score")
+  journalId         String?   @map("journal_id")
   createdAt         DateTime  @default(now()) @map("created_at")
   settledAt         DateTime? @map("settled_at")
 
-  account     Account      @relation(fields: [accountId], references: [id])
-  user        User         @relation(fields: [userId], references: [id])
-  disputes    Dispute[]
-  fraudAlerts FraudAlert[]
-  tags        TransactionTag[]
+  account       Account      @relation(fields: [accountId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
+  disputes      Dispute[]
+  fraudAlerts   FraudAlert[]
+  tags          TransactionTag[]
   ledgerEntries LedgerEntry[]
 
+  @@index([journalId])
   @@map("transactions")
 }
 
@@ -243,7 +250,7 @@ model InvestmentOrder {
   pricePerShare Decimal   @map("price_per_share") @db.Decimal(18, 4)
   totalAmount   Decimal   @map("total_amount") @db.Decimal(18, 2)
   status        String    @default("pending")
-  filledAt      DateTime? @map("filled_at")
+  filledAt      DateTime?
   createdAt     DateTime  @default(now()) @map("created_at")
 
   portfolio InvestmentPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
@@ -401,7 +408,7 @@ model Dispute {
   assignedTo        String?   @map("assigned_to")
   deadlineAt        DateTime? @map("deadline_at")
   createdAt         DateTime  @default(now()) @map("created_at")
-  resolvedAt        DateTime? @map("resolved_at")
+  resolvedAt        DateTime?
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
   user        User        @relation(fields: [userId], references: [id])
@@ -475,7 +482,10 @@ model Deposit {
   description   String?
   createdAt     DateTime @default(now()) @map("created_at")
   completedAt   DateTime?
+  account       Account  @relation(fields: [accountId], references: [id])
+  user          User     @relation(fields: [userId], references: [id])
   @@index([userId, createdAt])
+  @@index([accountId, createdAt])
   @@map("deposits")
 }
 
@@ -492,7 +502,10 @@ model Withdrawal {
   createdAt     DateTime @default(now()) @map("created_at")
   reviewedAt    DateTime?
   reviewedBy    String?
+  account       Account  @relation(fields: [accountId], references: [id])
+  user          User     @relation(fields: [userId], references: [id])
   @@index([userId, status, createdAt])
+  @@index([accountId, status, createdAt])
   @@map("withdrawals")
 }
 
@@ -504,6 +517,7 @@ model Notification {
   message   String
   readAt    DateTime?
   createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, readAt, createdAt])
   @@map("notifications")
 }
@@ -516,6 +530,7 @@ model SecurityEvent {
   userAgent String?  @map("user_agent")
   metadata  Json?
   createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, createdAt])
   @@map("security_events")
 }
