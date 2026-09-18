@@ -1,12 +1,15 @@
-import { deleteTokenCookie, revokeAllUserSessions } from '@/lib/auth';
+import { deleteTokenCookie, revokeAllUserSessions, getCurrentUser } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-utils';
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    const userId = request.headers.get('x-user-id');
-    if (userId) await revokeAllUserSessions(userId);
+    const user = await getCurrentUser();
+    if (user) await revokeAllUserSessions(user.id);
     deleteTokenCookie('access_token');
     deleteTokenCookie('refresh_token');
     return successResponse({ loggedOut: true });
-  } catch (e) { console.error(e); return errorResponse('Internal server error', 500); }
+  } catch (e) {
+    console.error(e);
+    return errorResponse('Internal server error', 500);
+  }
 }
