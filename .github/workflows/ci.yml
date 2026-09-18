@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/crestline_ci?schema=public
+      JWT_ACCESS_SECRET: crestline-ci-access-secret-32-characters-min
+      JWT_REFRESH_SECRET: crestline-ci-refresh-secret-32-characters-min
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
