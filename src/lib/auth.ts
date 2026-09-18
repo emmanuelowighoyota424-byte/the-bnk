@@ -3,12 +3,16 @@ import { cookies } from 'next/headers';
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 
-const ACCESS_SECRET = new TextEncoder().encode(
-  process.env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me-in-production-32chars'
-);
-const REFRESH_SECRET = new TextEncoder().encode(
-  process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-me-in-production-32chars'
-);
+const accessSecretValue = process.env.JWT_ACCESS_SECRET;
+const refreshSecretValue = process.env.JWT_REFRESH_SECRET;
+if (process.env.NODE_ENV === 'production' && (!accessSecretValue || accessSecretValue.length < 32)) {
+  throw new Error('JWT_ACCESS_SECRET must be configured with at least 32 characters in production');
+}
+if (process.env.NODE_ENV === 'production' && (!refreshSecretValue || refreshSecretValue.length < 32)) {
+  throw new Error('JWT_REFRESH_SECRET must be configured with at least 32 characters in production');
+}
+const ACCESS_SECRET = new TextEncoder().encode(accessSecretValue || 'dev-access-secret-change-me-in-production-32chars');
+const REFRESH_SECRET = new TextEncoder().encode(refreshSecretValue || 'dev-refresh-secret-change-me-in-production-32chars');
 
 const ACCESS_EXPIRY = '15 minutes';
 const REFRESH_EXPIRY = '7 days';
