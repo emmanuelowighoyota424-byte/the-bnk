@@ -1,0 +1,2 @@
+import {getCurrentAdmin} from '@/lib/auth'; import {successResponse,unauthorizedResponse} from '@/lib/api-utils';
+export async function GET(){const admin=await getCurrentAdmin();if(!admin)return unauthorizedResponse();return successResponse({application:'Crestline Capital',currency:'USD',environment:process.env.NODE_ENV||'development',databaseConfigured:Boolean(process.env.DATABASE_URL),accessJwtConfigured:Boolean(process.env.JWT_ACCESS_SECRET),refreshJwtConfigured:Boolean(process.env.JWT_REFRESH_SECRET)});}
