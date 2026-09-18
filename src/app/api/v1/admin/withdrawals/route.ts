@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { errorResponse, successResponse, unauthorizedResponse, forbiddenResponse } from '@/lib/api-utils';
-import { getCurrentAdmin, logAudit } from '@/lib/auth';
+import { getCurrentAdmin } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { approveWithdrawal, rejectWithdrawal } from '@/lib/banking';
 
@@ -36,15 +36,6 @@ export async function POST(req: NextRequest) {
     const result = action === 'approve'
       ? await approveWithdrawal(admin.id, id, reason)
       : await rejectWithdrawal(admin.id, id, reason);
-
-    await logAudit({
-      actorId: admin.id,
-      actorType: 'admin',
-      action: `withdrawal.${action}`,
-      entityType: 'withdrawal',
-      entityId: id,
-      changes: reason ? { reason } : undefined,
-    });
 
     return successResponse(result);
   } catch (error) {
