@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const banking = fs.readFileSync('src/lib/banking.ts', 'utf8');
+const adminWithdrawal = fs.readFileSync('src/app/api/v1/admin/withdrawals/[id]/route.ts', 'utf8');
 const auth = fs.readFileSync('src/lib/auth.ts', 'utf8');
 const middleware = fs.readFileSync('src/middleware.ts', 'utf8');
 
@@ -14,7 +15,7 @@ test('transfer service uses a database transaction and idempotency key', () => {
 
 test('transfer and withdrawal paths use conditional balance updates', () => {
   assert.match(banking, /availableBalance:\{gte:total\}/);
-  assert.match(banking, /availableBalance:\{gte:w\.amount\}/);
+  assert.match(adminWithdrawal, /availableBalance:\{gte:w\.amount\}/);
 });
 
 test('financial movements write ledger entries', () => {
