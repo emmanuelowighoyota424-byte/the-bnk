@@ -1,5 +1,8 @@
 name: Crestline Capital CI
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [main]
@@ -21,9 +24,14 @@ jobs:
       - run: npx prisma generate
       - name: Generate production migration artifact
         run: mkdir -p prisma/migrations/0001_init && npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/0001_init/migration.sql
-      - uses: actions/upload-artifact@v4
-        with:
-          name: crestline-prisma-migration
-          path: prisma/migrations/0001_init/migration.sql
+      - name: Commit generated production migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prisma/migrations/0001_init/migration.sql
+          if ! git diff --cached --quiet; then
+            git commit -m "db: add initial production Prisma migration"
+            git push origin HEAD:main
+          fi
       - run: npx tsc --noEmit
       - run: npm run build
