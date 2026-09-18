@@ -1,7 +1,7 @@
 name: Crestline Capital CI
 
 permissions:
-  contents: write
+  contents: read
 
 on:
   push:
@@ -12,31 +12,42 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: crestline_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d crestline_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/crestline_ci?schema=public
       JWT_ACCESS_SECRET: crestline-ci-access-secret-32-characters-min
       JWT_REFRESH_SECRET: crestline-ci-refresh-secret-32-characters-min
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - run: npm install
       - run: npx prisma validate
       - run: npx prisma generate
-      - name: Generate production migration artifact
-        run: mkdir -p prisma/migrations/0001_init && npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > prisma/migrations/0001_init/migration.sql
-      - name: Commit generated production migration
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add prisma/migrations/0001_init/migration.sql
-          if ! git diff --cached --quiet; then
-            git commit -m "db: add initial production Prisma migration"
-            git push origin HEAD:main
-          fi
+      - name: Apply production migrations to PostgreSQL
+        run: npx prisma migrate deploy
+      - name: Verify PostgreSQL connectivity
+        run: npx prisma migrate status
       - run: npx tsc --noEmit
       - run: npm run lint
-      - run: npm test
+      - name: Run unit/security regression tests
+        run: node --test tests/*.test.mjs
+      - name: Run persisted PostgreSQL financial tests
+        run: npx tsx --test tests/financial-postgres.test.ts
       - run: npm run build
