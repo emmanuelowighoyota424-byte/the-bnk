@@ -1,7 +1,7 @@
 {
-  "name": "the-bnk",
+  "name": "crestline-capital",
   "version": "1.0.0",
-  "description": "The Bnk — A next-generation digital banking ecosystem",
+  "description": "Crestline Capital — secure digital banking platform",
   "private": true,
   "scripts": {
     "dev": "next dev",
