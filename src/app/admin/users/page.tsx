@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 interface User { id: string; email: string; firstName: string; lastName: string; bnkTag: string | null; kycStatus: string; kycTier: number; status: string; createdAt: string; _count: { accounts: number }; }
@@ -11,7 +11,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchUsers = async (q = '', p = 1) => {
+  const fetchUsers = useCallback(async (q = '', p = 1) => {
     try {
       const params = new URLSearchParams({ page: String(p), limit: '20' });
       if (q) params.set('search', q);
@@ -22,7 +22,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => { fetchUsers(search, page); }, [page]);
 
-  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); fetchUsers(search, 1); };
+  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); };
 
   return (
     <div className="min-h-screen bg-gray-900">
