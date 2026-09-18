@@ -60,7 +60,7 @@ export function setTokenCookie(name: string, token: string, maxAge: number) {
   });
 }
 
-export function getTokenFromCookie(name: string): string | undefined {
+export async function getCurrentUser() {\n  const token = getTokenFromCookie('access_token');\n  if (!token) return null;\n  const payload = await verifyAccessToken(token);\n  if (!payload?.sub) return null;\n  const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { id: true, email: true, status: true, firstName: true, lastName: true } });\n  if (!user || user.status !== 'active') return null;\n  return user;\n}\n\nexport async function getCurrentAdmin() {\n  const token = getTokenFromCookie('access_token');\n  if (!token) return null;\n  const payload = await verifyAccessToken(token);\n  if (!payload?.sub || payload.role !== 'admin') return null;\n  const admin = await prisma.adminUser.findUnique({ where: { id: payload.sub }, include: { role: true } });\n  if (!admin || admin.status !== 'active') return null;\n  return admin;\n}\n\nexport function getTokenFromCookie(name: string): string | undefined {
   const cookieStore = cookies();
   return cookieStore.get(name)?.value;
 }
