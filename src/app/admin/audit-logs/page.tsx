@@ -1,0 +1,1 @@
+import AdminResourcePage from '@/components/AdminResourcePage'; export default function AuditLogs(){return <AdminResourcePage title="Audit logs" resource="audit-logs" columns={['ActorId','ActorType','Action','EntityType','EntityId','CreatedAt']}/>}
