@@ -18,11 +18,12 @@ export async function transferFunds(userId:string, input:{senderAccountId:string
     if(!recipient) throw new Error('Recipient account not found');
     if(recipient.status!=='active') throw new Error('Recipient account is not active');
     if(sender.id===recipient.id) throw new Error('Self transfers are not allowed');
-    if(sender.availableBalance.lt(amount)) throw new Error('Insufficient funds');
     const total=amount;
     const reference=ref('TRF');
     const transfer=await tx.transfer.create({data:{senderAccountId:sender.id,recipientAccountId:recipient.id,senderUserId:userId,recipientUserId:recipient.userId,amount,fee:0,totalDebit:total,currency:sender.currency,description,status:'completed',reference,idempotencyKey:input.idempotencyKey,completedAt:new Date()}});
-    const debit=await tx.account.update({where:{id:sender.id},data:{balance:{decrement:total},availableBalance:{decrement:total}}});
+    const reserved=await tx.account.updateMany({where:{id:sender.id,status:'active',availableBalance:{gte:total}},data:{balance:{decrement:total},availableBalance:{decrement:total}}});
+    if(reserved.count!==1) throw new Error('Insufficient funds');
+    const debit=await tx.account.findUniqueOrThrow({where:{id:sender.id}});
     const credit=await tx.account.update({where:{id:recipient.id},data:{balance:{increment:amount},availableBalance:{increment:amount}}});
     const senderTx=await tx.transaction.create({data:{accountId:sender.id,userId,txType:'TRANSFER',amount:total,currency:sender.currency,description:description||'Transfer',status:'completed',referenceId:reference,idempotencyKey:input.idempotencyKey,settledAt:new Date(),runningBalance:debit.balance,ipAddress:meta.ip}});
     const recipientTx=await tx.transaction.create({data:{accountId:recipient.id,userId:recipient.userId,txType:'TRANSFER',amount, currency:recipient.currency,description:description||'Transfer received',status:'completed',referenceId:reference,settledAt:new Date(),runningBalance:credit.balance}});
@@ -53,7 +54,7 @@ export async function createDeposit(userId:string,input:{accountId:string;amount
 export async function createWithdrawal(userId:string,input:{accountId:string;amount:string;destination:string;description?:string}) {
  const amount=money(input.amount); if(amount.lte(0)) throw new Error('Amount must be greater than zero');
  const account=await prisma.account.findFirst({where:{id:input.accountId,userId}});
- if(!account) throw new Error('Account not found'); if(account.status!=='active') throw new Error('Account is not active'); if(account.availableBalance.lt(amount)) throw new Error('Insufficient funds');
+ if(!account) throw new Error('Account not found'); if(account.status!=='active') throw new Error('Account is not active');
  const withdrawal=await prisma.withdrawal.create({data:{accountId:account.id,userId,amount,currency:account.currency,destination,reference:ref('WDR'),status:'pending',description:input.description}});
  await prisma.notification.create({data:{userId,type:'WITHDRAWAL_SUBMITTED',title:'Withdrawal submitted',message:`Your $${amount.toFixed(2)} withdrawal request is pending approval.`}});
  await logAudit({actorId:userId,actorType:'user',action:'withdrawal.created',entityType:'withdrawal',entityId:withdrawal.id});
