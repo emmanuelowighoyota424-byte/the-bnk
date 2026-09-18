@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'The Bnk — Digital Banking Ecosystem',
-  description: 'Next-generation digital banking — one platform for every financial decision.',
+  title: 'Crestline Capital — Digital Banking Ecosystem',
+  description: 'Modern digital banking for secure accounts, transfers, deposits and withdrawals.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
