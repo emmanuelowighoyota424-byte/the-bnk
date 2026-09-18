@@ -48,5 +48,5 @@ jobs:
       - name: Run unit/security regression tests
         run: node --test tests/*.test.mjs
       - name: Run persisted PostgreSQL financial tests
-        run: npx tsx --test tests/financial-postgres.test.ts
+        run: npx tsx --test --test-force-exit tests/financial-postgres.test.ts
       - run: npm run build
