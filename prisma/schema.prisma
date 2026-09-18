@@ -102,6 +102,7 @@ model Account {
 
   user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions     Transaction[]
+  ledgerEntries    LedgerEntry[]
   cards            Card[]
   savingsGoals     SavingsGoal[]
   recurringFrom    RecurringTransfer[] @relation("FromAccount")
@@ -138,6 +139,7 @@ model Transaction {
   disputes    Dispute[]
   fraudAlerts FraudAlert[]
   tags        TransactionTag[]
+  ledgerEntries LedgerEntry[]
 
   @@map("transactions")
 }
