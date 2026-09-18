@@ -16,7 +16,7 @@ model User {
   firstName     String   @map("first_name")
   lastName      String   @map("last_name")
   dateOfBirth   DateTime? @map("date_of_birth")
-  ssnLast4      String?   @map("ssn_last4")
+  ssnLast4      String?  @map("ssn_last4")
   kycStatus     String   @default("pending") @map("kyc_status")
   kycTier       Int      @default(0) @map("kyc_tier")
   riskScore     Int      @default(0) @map("risk_score")
@@ -41,6 +41,7 @@ model User {
   deposits       Deposit[]
   withdrawals    Withdrawal[]
   notifications  Notification[]
+  securityEvents SecurityEvent[]
   cards          Card[]
   portfolios     InvestmentPortfolio[]
   savingsGoals   SavingsGoal[]
@@ -62,7 +63,7 @@ model UserSession {
   location         String?  @map("location")
   expiresAt        DateTime @map("expires_at")
   createdAt        DateTime @default(now()) @map("created_at")
-  revokedAt        DateTime? @map("revoked_at")
+  revokedAt        DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -213,7 +214,7 @@ model InvestmentPortfolio {
   targetAllocation Json      @map("target_allocation")
   currentValue     Decimal   @default(0) @map("current_value") @db.Decimal(18, 2)
   totalReturnPct   Decimal?  @map("total_return_pct") @db.Decimal(8, 4)
-  status           String    @default("active")
+  status            String    @default("active")
   createdAt        DateTime  @default(now()) @map("created_at")
   rebalanceNextAt  DateTime? @map("rebalance_next_at")
 
@@ -253,7 +254,7 @@ model InvestmentOrder {
   filledAt      DateTime?
   createdAt     DateTime  @default(now()) @map("created_at")
 
-  portfolio InvestmentPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  portfolio InvestmentPortfolio @relation(fields: [portfolioId], references: [id])
 
   @@map("investment_orders")
 }
@@ -451,21 +452,21 @@ model LedgerEntry {
 }
 
 model Transfer {
-  id              String   @id @default(uuid())
-  senderAccountId String   @map("sender_account_id")
-  recipientAccountId String @map("recipient_account_id")
-  senderUserId    String   @map("sender_user_id")
-  recipientUserId String   @map("recipient_user_id")
-  amount          Decimal  @db.Decimal(18, 2)
-  fee             Decimal  @default(0) @db.Decimal(18, 2)
-  totalDebit      Decimal  @map("total_debit") @db.Decimal(18, 2)
-  currency        String   @default("USD")
-  description     String?
-  status          String   @default("completed")
-  reference       String   @unique
-  idempotencyKey  String   @unique @map("idempotency_key")
-  createdAt       DateTime @default(now()) @map("created_at")
-  completedAt     DateTime?
+  id                String   @id @default(uuid())
+  senderAccountId   String   @map("sender_account_id")
+  recipientAccountId String  @map("recipient_account_id")
+  senderUserId      String   @map("sender_user_id")
+  recipientUserId   String   @map("recipient_user_id")
+  amount            Decimal  @db.Decimal(18, 2)
+  fee              Decimal  @default(0) @db.Decimal(18, 2)
+  totalDebit       Decimal  @map("total_debit") @db.Decimal(18, 2)
+  currency         String   @default("USD")
+  description      String?
+  status           String   @default("completed")
+  reference        String   @unique
+  idempotencyKey   String   @unique @map("idempotency_key")
+  createdAt        DateTime @default(now()) @map("created_at")
+  completedAt      DateTime?
   @@index([senderUserId, createdAt])
   @@index([recipientUserId, createdAt])
   @@map("transfers")
