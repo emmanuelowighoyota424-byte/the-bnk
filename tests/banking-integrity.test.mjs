@@ -25,7 +25,7 @@ test('financial movements write ledger entries', () => {
 
 test('production authentication refuses missing weak JWT secrets', () => {
   assert.match(auth, /NODE_ENV === 'production'/);
-  assert.match(auth, /length < 32/);
+  assert.match(auth, /accessSecretValue\.length < 32/);\n  assert.match(auth, /refreshSecretValue\.length < 32/);
 });
 
 test('middleware derives request identity from the signed access-token cookie', () => {
