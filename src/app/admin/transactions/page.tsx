@@ -1,1 +1,1 @@
-import AdminResourcePage from '@/components/AdminResourcePage'; export default function Transactions(){return <AdminResourcePage title="Transactions" resource="transactions" columns={['TxType','Amount','Currency','Status','ReferenceId','JournalId','CreatedAt']}/>}
+import AdminResourcePage from '../../../components/AdminResourcePage'; export default function Transactions(){return <AdminResourcePage title="Transactions" resource="transactions" columns={['TxType','Amount','Currency','Status','ReferenceId','JournalId','CreatedAt']}/>}
