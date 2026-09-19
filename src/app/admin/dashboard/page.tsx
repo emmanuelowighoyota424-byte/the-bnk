@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 interface Metrics {
   users: { total: number; active: number };
@@ -13,113 +12,41 @@ interface Metrics {
   fraud: { openAlerts: number };
 }
 
-const links = [
-  ['/admin/customers', 'Customers', 'Search and review customer accounts'],
-  ['/admin/accounts', 'Accounts', 'Balances, ownership and status'],
-  ['/admin/transactions', 'Transactions', 'Review financial activity'],
-  ['/admin/transfers', 'Transfers', 'Monitor transfer operations'],
-  ['/admin/deposits', 'Deposits', 'Review deposit activity'],
-  ['/admin/withdrawals', 'Withdrawals', 'Review withdrawal requests'],
-  ['/admin/users', 'Users', 'Manage platform users'],
-  ['/admin/roles', 'Roles', 'Review administrative access'],
-  ['/admin/audit-logs', 'Audit logs', 'Inspect sensitive actions'],
-  ['/admin/settings', 'Settings', 'Platform configuration'],
+const groups = [
+  ['People', [['Customers', '/admin/customers'], ['Users', '/admin/users'], ['KYC', '/admin/kyc'], ['Referrals', '/admin/referrals']]],
+  ['Financial operations', [['Deposits', '/admin/deposits'], ['Withdrawals', '/admin/withdrawals'], ['Transfers', '/admin/transfers'], ['Transactions', '/admin/transactions'], ['Accounts', '/admin/accounts']]],
+  ['Operations', [['Cards', '/admin/cards'], ['Loans', '/admin/loans'], ['Currencies', '/admin/currencies'], ['Payment Methods', '/admin/payment-methods']]],
+  ['System', [['Audit Log', '/admin/audit-logs'], ['Roles', '/admin/roles'], ['Settings', '/admin/settings'], ['Appearance', '/admin/appearance']]],
 ];
 
 export default function AdminDashboardPage() {
-  const router = useRouter();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/v1/admin/metrics')
-      .then(async (r) => {
-        const x = await r.json();
-        if (!r.ok || !x.success) throw new Error(x.error || 'Unable to load metrics');
-        setMetrics(x.data);
-      })
-      .catch((e) => setError(e.message))
+    fetch('/api/v1/admin/metrics', { cache: 'no-store' })
+      .then(async (r) => { const x = await r.json(); if (!r.ok || !x.success) throw new Error(x.error || 'Unable to load metrics'); setMetrics(x.data); })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Unable to load metrics'))
       .finally(() => setLoading(false));
   }, []);
 
-  async function logout() {
-    await fetch('/api/v1/auth/logout', { method: 'POST' });
-    router.push('/admin/login');
-    router.refresh();
-  }
-
-  const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-
-  const metricCards = [
+  const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+  const cards: [string, string | number][] = [
     ['Customers', metrics?.users.total ?? 0],
     ['Active customers', metrics?.users.active ?? 0],
     ['Accounts', metrics?.accounts.total ?? 0],
-    ['Account balances', currency.format(metrics?.accounts.totalBalance ?? 0)],
+    ['Total account balances', money.format(metrics?.accounts.totalBalance ?? 0)],
     ["Today's transactions", metrics?.transactions.today ?? 0],
     ['Pending KYC', metrics?.kyc.pending ?? 0],
     ['Open disputes', metrics?.disputes.open ?? 0],
     ['Open fraud alerts', metrics?.fraud.openAlerts ?? 0],
   ];
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/95 backdrop-blur">
-        <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Link href="/admin/dashboard" className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 font-bold">C</span>
-            <span className="font-bold tracking-tight">
-              Crestline Capital <span className="font-normal text-slate-500">/ Admin</span>
-            </span>
-          </Link>
-          <button onClick={logout} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-900">
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
-        <div>
-          <p className="text-sm font-medium text-indigo-400">Administration</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Platform overview</h1>
-          <p className="mt-1 text-sm text-slate-400">Live operational metrics from the banking database.</p>
-        </div>
-
-        {error && (
-          <div className="mt-5 rounded-xl border border-red-900 bg-red-950/40 p-4 text-sm text-red-200">
-            {error}
-          </div>
-        )}
-
-        <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {metricCards.map(([label, value]) => (
-            <div key={String(label)} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-              <p className="mt-3 text-2xl font-bold">{loading ? '—' : value}</p>
-            </div>
-          ))}
-        </div>
-
-        <section className="mt-9">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold">Management</h2>
-            <p className="text-sm text-slate-400">Authorized operational areas.</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {links.map(([href, label, desc]) => (
-              <Link
-                key={href}
-                href={href}
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-indigo-500 hover:bg-slate-900/80"
-              >
-                <p className="font-semibold">{label}</p>
-                <p className="mt-1 text-sm text-slate-400">{desc}</p>
-                <span className="mt-4 inline-block text-xs font-semibold text-indigo-400">Open →</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      </main>
-    </div>
-  );
+  return <main>
+    <div className="pl-10 sm:pl-8"><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-400">Operations</p><h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Platform overview</h1><p className="mt-1 text-sm text-slate-400">Live metrics sourced from the Crestline Capital PostgreSQL database.</p></div>
+    {error && <div role="alert" className="mt-5 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
+    <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-slate-900 p-5"><p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{label}</p><p className="mt-3 text-2xl font-bold tracking-tight text-white">{loading ? '—' : value}</p></div>)}</section>
+    <section className="mt-9 space-y-7">{groups.map(([title, items]) => <div key={String(title)}><div className="mb-3"><h2 className="text-base font-semibold text-white">{String(title)}</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{(items as string[][]).map(([label, href]) => <Link key={href} href={href} className="group rounded-2xl border border-white/10 bg-slate-900 p-5 transition hover:border-indigo-400/40 hover:bg-slate-900/80"><p className="font-semibold text-slate-100">{label}</p><p className="mt-2 text-xs text-slate-500">Open workspace <span className="text-indigo-400 transition group-hover:translate-x-0.5">→</span></p></Link>)}</div></div>)}</section>
+  </main>;
 }
