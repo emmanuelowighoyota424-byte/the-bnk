@@ -72,14 +72,15 @@ export async function getCurrentUser() {
   const token = getTokenFromCookie('access_token');
   if (!token) return null;
   const payload = await verifyAccessToken(token);
-  if (!payload?.sub) return null;
+  if (!payload?.sub || payload.role === 'admin') return null;
   const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { id: true, email: true, status: true, firstName: true, lastName: true } });
   if (!user || user.status !== 'active') return null;
   return user;
 }
 
+/** Admin authentication is intentionally isolated from the customer cookie. */
 export async function getCurrentAdmin() {
-  const token = getTokenFromCookie('access_token');
+  const token = getTokenFromCookie('admin_access_token');
   if (!token) return null;
   const payload = await verifyAccessToken(token);
   if (!payload?.sub || payload.role !== 'admin') return null;
