@@ -194,16 +194,18 @@ export async function transferFunds(userId: string, input: { senderAccountId: st
   return result;
 }
 
-export async function createDeposit(userId: string, input: { accountId: string; amount: string; description?: string }) {
+export async function createDeposit(userId: string, input: { accountId: string; amount: string; description?: string; idempotencyKey: string }) {
+  const existing = await prisma.deposit.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
+  if (existing) { if (existing.userId !== userId) throw new Error('Invalid idempotency key'); return { deposit: existing, replayed: true }; }
   const amount = money(input.amount);
   if (amount.lte(0)) throw new Error('Amount must be greater than zero');
   const account = await prisma.account.findFirst({ where: { id: input.accountId, userId } });
   if (!account) throw new Error('Account not found');
   if (account.status !== 'active') throw new Error('Account is not active');
-  const deposit = await prisma.deposit.create({ data: { accountId: account.id, userId, amount, currency: account.currency, reference: ref('DEP'), status: 'pending', description: input.description } });
+  const deposit = await prisma.deposit.create({ data: { accountId: account.id, userId, amount, currency: account.currency, reference: ref('DEP'), status: 'pending', description: input.description, idempotencyKey: input.idempotencyKey } });
   await prisma.notification.create({ data: { userId, type: 'DEPOSIT_SUBMITTED', title: 'Deposit submitted', message: `Your $${amount.toFixed(2)} deposit request is pending review.` } });
   await logAudit({ actorId: userId, actorType: 'user', action: 'deposit.created', entityType: 'deposit', entityId: deposit.id });
-  return deposit;
+  return { deposit, replayed: false };
 }
 
 export async function approveDeposit(adminId: string, depositId: string, reason?: string) {
@@ -252,16 +254,18 @@ export async function rejectDeposit(adminId: string, depositId: string, reason?:
   return result;
 }
 
-export async function createWithdrawal(userId: string, input: { accountId: string; amount: string; destination: string; description?: string }) {
+export async function createWithdrawal(userId: string, input: { accountId: string; amount: string; destination: string; description?: string; idempotencyKey: string }) {
+  const existing = await prisma.withdrawal.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
+  if (existing) { if (existing.userId !== userId) throw new Error('Invalid idempotency key'); return { withdrawal: existing, replayed: true }; }
   const amount = money(input.amount);
   if (amount.lte(0)) throw new Error('Amount must be greater than zero');
   const account = await prisma.account.findFirst({ where: { id: input.accountId, userId } });
   if (!account) throw new Error('Account not found');
   if (account.status !== 'active') throw new Error('Account is not active');
-  const withdrawal = await prisma.withdrawal.create({ data: { accountId: account.id, userId, amount, currency: account.currency, destination: input.destination, reference: ref('WDR'), status: 'pending', description: input.description } });
+  const withdrawal = await prisma.withdrawal.create({ data: { accountId: account.id, userId, amount, currency: account.currency, destination: input.destination, reference: ref('WDR'), status: 'pending', description: input.description, idempotencyKey: input.idempotencyKey } });
   await prisma.notification.create({ data: { userId, type: 'WITHDRAWAL_SUBMITTED', title: 'Withdrawal submitted', message: `Your $${amount.toFixed(2)} withdrawal request is pending approval.` } });
   await logAudit({ actorId: userId, actorType: 'user', action: 'withdrawal.created', entityType: 'withdrawal', entityId: withdrawal.id });
-  return withdrawal;
+  return { withdrawal, replayed: false };
 }
 
 export async function approveWithdrawal(adminId: string, withdrawalId: string, reason?: string) {
