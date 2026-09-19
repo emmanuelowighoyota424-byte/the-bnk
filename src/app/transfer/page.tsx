@@ -59,6 +59,8 @@ export default function TransferPage() {
   const [error, setError] = useState('');
   const [fieldError, setFieldError] = useState('');
   const [result, setResult] = useState<TransferResult | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -109,6 +111,13 @@ export default function TransferPage() {
     setSubmitting(true);
     setError('');
     try {
+      if (!verificationCode) {
+        const codeResponse = await fetch('/api/v1/transaction-codes', { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({ type:'TRANSFER', payload:{senderAccountId:form.senderAccountId,recipientAccountNumber:form.recipientAccountNumber.trim(),amount:form.amount,description:form.description.trim()||''} }) });
+        const codeData = await codeResponse.json();
+        if (!codeResponse.ok || !codeData.success) throw new Error(codeData.error || 'Unable to send security code.');
+        setCodeSent(true);
+        return;
+      }
       const response = await fetch('/api/v1/transfers', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
@@ -117,6 +126,7 @@ export default function TransferPage() {
           recipientAccountNumber: form.recipientAccountNumber.trim(),
           amount: form.amount,
           description: form.description.trim() || undefined,
+          verificationCode,
         }),
       });
       const data = (await response.json()) as ApiResponse;
@@ -177,7 +187,7 @@ export default function TransferPage() {
             {!loadingAccounts && step < 4 && (
               <div className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50/70 p-5 sm:flex-row sm:justify-between sm:p-7">
                 <button type="button" onClick={back} disabled={step === 0} className="btn-secondary w-full sm:w-auto disabled:invisible">Back</button>
-                {step < 3 ? <button type="button" onClick={next} className="btn-primary w-full sm:min-w-40 sm:w-auto">Continue</button> : <button type="button" onClick={submit} disabled={submitting || !canContinue} className="btn-primary w-full sm:min-w-48 sm:w-auto">{submitting ? 'Processing…' : 'Confirm transfer'}</button>}
+                {step < 3 ? <button type="button" onClick={next} className="btn-primary w-full sm:min-w-40 sm:w-auto">Continue</button> : <div className="flex w-full flex-col gap-3 sm:w-auto sm:min-w-72"><input inputMode="numeric" maxLength={6} placeholder={codeSent ? 'Enter 6-digit email code' : 'Email code required'} value={verificationCode} onChange={e=>setVerificationCode(e.target.value.replace(/\D/g,''))} className="input-field w-full"/>{codeSent&&<p className="text-xs text-slate-500">A security code was sent to your email. Enter it above to confirm.</p>}<button type="button" onClick={submit} disabled={submitting || !canContinue || (codeSent && verificationCode.length!==6)} className="btn-primary w-full">{submitting ? 'Processing…' : codeSent ? 'Confirm transfer' : 'Email me a security code'}</button></div>}
               </div>
             )}
           </section>
