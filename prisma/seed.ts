@@ -11,23 +11,26 @@ const DEFAULT_ROLES = [
 ];
 
 async function main() {
-  console.log('Seeding The Bnk database...');
+  console.log('Seeding Crestline Capital database...');
   for (const roleData of DEFAULT_ROLES) {
     await prisma.role.upsert({ where: { name: roleData.name }, update: { permissions: roleData.permissions }, create: { name: roleData.name, description: roleData.description, permissions: roleData.permissions } });
   }
-  console.log('Roles seeded');
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@thebnk.com';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123!';
-  const passwordHash = await bcrypt.hash(adminPassword, 12);
+
+  const adminEmail = process.env.ADMIN_EMAIL || 'owighoyotaemmanuel424@gmail.com';
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword && process.env.NODE_ENV === 'production') {
+    throw new Error('ADMIN_PASSWORD must be configured when seeding production');
+  }
+  const passwordHash = await bcrypt.hash(adminPassword || 'Admin@123!', 12);
   const superAdminRole = await prisma.role.findUnique({ where: { name: 'Super Admin' } });
   if (superAdminRole) {
-    await prisma.adminUser.upsert({ where: { email: adminEmail }, update: {}, create: { email: adminEmail, passwordHash, displayName: 'Super Admin', roleId: superAdminRole.id } });
-    console.log('Admin user seeded: ' + adminEmail);
+    await prisma.adminUser.upsert({ where: { email: adminEmail }, update: { roleId: superAdminRole.id, status: 'active' }, create: { email: adminEmail, passwordHash, displayName: 'Crestline Administrator', roleId: superAdminRole.id } });
+    console.log('Administrator account provisioned for configured admin email.');
   }
+
   const testPasswordHash = await bcrypt.hash('Test@123!', 12);
   await prisma.user.upsert({ where: { email: 'test@thebnk.com' }, update: {}, create: { email: 'test@thebnk.com', passwordHash: testPasswordHash, bnkTag: 'testuser', firstName: 'Test', lastName: 'User', kycStatus: 'verified', kycTier: 1, status: 'active' } });
-  console.log('Test user seeded: test@thebnk.com / Test@123!');
-  console.log('Seeding complete!');
+  console.log('Seeding complete.');
 }
 
-main().catch((e) => { console.error(e); process.exit(1); }).finally(async () => { await prisma.$disconnect(); });
+main().catch((error) => { console.error(error); process.exit(1); }).finally(async () => { await prisma.$disconnect(); });
