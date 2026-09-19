@@ -320,7 +320,7 @@ export async function rejectDeposit(adminId: string, depositId: string, reason?:
   return result;
 }
 
-export async function createWithdrawal(userId: string, input: { accountId: string; amount: string; destination: string; description?: string; idempotencyKey: string }) {
+export async function createWithdrawal(userId: string, input: { accountId: string; amount: string; destination: string; description?: string; idempotencyKey?: string }) {
   const idempotencyKey = input.idempotencyKey ?? crypto.randomUUID();
   const existing = await prisma.withdrawal.findUnique({ where: { idempotencyKey } });
   if (existing) { if (existing.userId !== userId) throw new Error('Invalid idempotency key'); return { ...existing, withdrawal: existing, replayed: true }; }
