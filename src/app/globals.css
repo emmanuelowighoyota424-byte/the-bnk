@@ -5,21 +5,45 @@
 :root { color-scheme: light; }
 
 @layer base {
-  html { @apply bg-slate-50; }
-  body { @apply bg-slate-50 text-slate-950 antialiased; }
+  html { @apply bg-stone-50; }
+  body { @apply bg-stone-50 text-slate-950 antialiased; }
   * { @apply border-slate-200; }
 }
 
 @layer components {
-  .btn-primary { @apply inline-flex min-h-11 items-center justify-center rounded-xl bg-indigo-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex min-h-11 items-center justify-center rounded-xl border bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-danger { @apply inline-flex min-h-11 items-center justify-center rounded-xl bg-red-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50; }
-  .input-field { @apply min-h-11 w-full rounded-xl border bg-white px-4 py-2.5 text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100; }
+  .btn-primary { @apply inline-flex min-h-11 items-center justify-center rounded-lg bg-red-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex min-h-11 items-center justify-center rounded-lg border bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-danger { @apply inline-flex min-h-11 items-center justify-center rounded-lg bg-red-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50; }
+  .input-field { @apply min-h-11 w-full rounded-lg border bg-white px-4 py-2.5 text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-red-600 focus:ring-2 focus:ring-red-100; }
   .label-text { @apply mb-1.5 block text-sm font-medium text-slate-700; }
-  .card { @apply rounded-2xl border bg-white p-5 shadow-sm sm:p-6; }
-  .stat-card { @apply rounded-2xl border bg-white p-5 shadow-sm; }
+  .card { @apply rounded-xl border bg-white p-5 shadow-sm sm:p-6; }
+  .stat-card { @apply rounded-xl border bg-white p-5 shadow-sm; }
   .page-container { @apply mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8; }
   .section-title { @apply text-lg font-semibold tracking-tight text-slate-950; }
+}
+
+/* Crestline Capital banking theme: red, warm neutrals and restrained gold accents.
+   These utility overrides keep existing pages visually consistent without requiring
+   every page component to be rewritten individually. */
+@layer utilities {
+  .bg-indigo-50 { background-color: #fdf0f1 !important; }
+  .bg-indigo-100 { background-color: #f9dfe2 !important; }
+  .bg-indigo-200 { background-color: #f2c1c7 !important; }
+  .bg-indigo-700 { background-color: #b21f35 !important; }
+  .bg-indigo-800 { background-color: #941a2c !important; }
+  .bg-indigo-900 { background-color: #771525 !important; }
+  .text-indigo-300 { color: #e8a7b0 !important; }
+  .text-indigo-600 { color: #a51c31 !important; }
+  .text-indigo-700 { color: #a51c31 !important; }
+  .text-indigo-800 { color: #8d182a !important; }
+  .border-indigo-600 { border-color: #a51c31 !important; }
+  .border-indigo-700 { border-color: #a51c31 !important; }
+  .ring-indigo-100 { --tw-ring-color: rgb(253 240 241) !important; }
+  .ring-indigo-600 { --tw-ring-color: rgb(165 28 49) !important; }
+  .hover\:bg-indigo-800:hover { background-color: #941a2c !important; }
+  .hover\:text-indigo-800:hover { color: #8d182a !important; }
+  .focus\:border-indigo-600:focus { border-color: #a51c31 !important; }
+  .focus\:ring-indigo-600:focus { --tw-ring-color: rgb(165 28 49) !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
