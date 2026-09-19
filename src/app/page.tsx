@@ -1,22 +1,65 @@
 import Link from 'next/link';
 
+const features = [
+  ['01', 'Everyday banking', 'See accounts, balances and activity in one clear place.'],
+  ['02', 'Move money', 'Transfer money through a guided, security-first experience.'],
+  ['03', 'Stay in control', 'Review activity, manage sessions and keep your account secure.'],
+];
+
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-950 to-gray-900 flex flex-col">
-      <nav className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-2"><div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center"><span className="text-white font-bold text-xl">B</span></div><span className="text-white font-bold text-2xl tracking-tight">Crestline Capital</span></div>
-        <div className="flex items-center gap-4"><Link href="/login" className="text-gray-300 hover:text-white font-medium">Sign In</Link><Link href="/register" className="bg-white text-indigo-700 px-6 py-2.5 rounded-lg font-medium hover:bg-gray-100">Open Account</Link></div>
-      </nav>
-      <main className="flex-1 flex items-center justify-center px-4">
-        <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/30 rounded-full px-4 py-1.5 mb-8"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" /><span className="text-indigo-200 text-sm font-medium">Now in beta — join the waitlist</span></div>
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-white tracking-tight leading-tight mb-6">One platform.<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Every financial decision.</span></h1>
-          <p className="text-lg sm:text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">Crestline Capital unifies banking, wealth management, smart cards, and AI-powered analytics into a single, intelligent platform.</p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4"><Link href="/register" className="btn-primary bg-indigo-600 text-lg px-10 py-4 rounded-xl">Get Started Free</Link><Link href="/admin/login" className="btn-secondary bg-white/5 border-gray-600 text-gray-300 text-lg px-10 py-4 rounded-xl">Admin Portal</Link></div>
-          <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">{['🏦 Core Banking','📈 Wealth & Investing','💳 Smart Cards','🤖 AI Insights'].map((f) => (<div key={f} className="bg-white/5 border border-gray-700 rounded-xl p-4 text-center"><div className="text-2xl mb-1">{f.split(' ')[0]}</div><div className="text-gray-400 text-sm font-medium">{f.slice(2)}</div></div>))}</div>
+    <main className="min-h-screen bg-white text-slate-950">
+      <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
+        <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8" aria-label="Primary navigation">
+          <Link href="/" className="flex items-center gap-3" aria-label="Crestline Capital home">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-950 text-lg font-bold text-white">C</span>
+            <span className="text-lg font-semibold tracking-tight">Crestline Capital</span>
+          </Link>
+          <div className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
+            <Link href="#features" className="hover:text-slate-950">Banking</Link>
+            <Link href="/about" className="hover:text-slate-950">About</Link>
+            <Link href="/contact" className="hover:text-slate-950">Contact</Link>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/login" className="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100">Sign in</Link>
+            <Link href="/register" className="rounded-xl bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-800">Open an account</Link>
+          </div>
+        </nav>
+      </header>
+
+      <section className="border-b border-slate-200 bg-slate-50">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:py-28">
+          <div>
+            <p className="mb-5 text-sm font-semibold uppercase tracking-[0.18em] text-indigo-700">Modern banking, made clear</p>
+            <h1 className="max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight text-slate-950 sm:text-6xl">Banking that puts your money and your decisions first.</h1>
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">Crestline Capital brings everyday accounts, secure money movement and account visibility together in a focused digital banking experience.</p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Link href="/register" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-indigo-700 px-6 text-sm font-semibold text-white shadow-sm hover:bg-indigo-800">Get started</Link>
+              <Link href="/login" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-800 hover:bg-slate-50">Sign in</Link>
+            </div>
+            <p className="mt-5 text-xs text-slate-500">Secure account access. Your financial information stays behind authenticated controls.</p>
+          </div>
+          <div className="rounded-3xl bg-slate-950 p-6 text-white shadow-2xl shadow-slate-300 sm:p-8">
+            <div className="flex items-center justify-between border-b border-white/10 pb-5"><span className="text-sm font-medium text-slate-300">Crestline account</span><span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">Secure</span></div>
+            <p className="mt-8 text-sm text-slate-400">Available balance</p>
+            <p className="mt-2 text-4xl font-semibold tracking-tight">••••••</p>
+            <div className="mt-8 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"><p className="text-xs text-slate-400">Accounts</p><p className="mt-1 font-semibold">Your real data</p></div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"><p className="text-xs text-slate-400">Transfers</p><p className="mt-1 font-semibold">Protected</p></div>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="text-center py-8 text-gray-500 text-sm">&copy; {new Date().getFullYear()} Crestline Capital. All rights reserved.</footer>
-    </div>
+      </section>
+
+      <section id="features" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:py-24">
+        <div className="max-w-2xl"><p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-700">Built around you</p><h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">The essentials, without the clutter.</h2></div>
+        <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 md:grid-cols-3">{features.map(([number, title, text]) => <article key={number} className="bg-white p-7"><span className="text-xs font-semibold text-indigo-700">{number}</span><h3 className="mt-10 text-xl font-semibold">{title}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{text}</p></article>)}</div>
+      </section>
+
+      <section className="bg-slate-950 px-5 py-16 text-white sm:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 sm:flex-row sm:items-center"><div><h2 className="text-2xl font-semibold tracking-tight">Ready to take control of your banking?</h2><p className="mt-2 text-sm text-slate-400">Open your Crestline Capital account or securely sign in.</p></div><Link href="/register" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-6 text-sm font-semibold text-slate-950 hover:bg-slate-100">Open an account</Link></div>
+      </section>
+      <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8"><span>© {new Date().getFullYear()} Crestline Capital</span><div className="flex gap-5"><Link href="/about" className="hover:text-slate-900">About</Link><Link href="/contact" className="hover:text-slate-900">Contact</Link><Link href="/admin/login" className="hover:text-slate-900">Admin</Link></div></div></footer>
+    </main>
   );
 }
