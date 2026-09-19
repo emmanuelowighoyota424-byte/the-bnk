@@ -22,7 +22,8 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
         interestRate: true,
         openedAt: true,
         closedAt: true,
-        transactions: { orderBy: { createdAt: 'desc' }, take: 100 },
+        user: { select: { id: true, firstName: true, lastName: true, email: true, bnkTag: true } },
+        transactions: { orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, description: true, txType: true, amount: true, currency: true, status: true, referenceId: true, createdAt: true } },
       },
     });
 
