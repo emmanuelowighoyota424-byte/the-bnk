@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { successResponse, unauthorizedResponse, errorResponse } from '@/lib/api-utils';
 import { getCurrentUser } from '@/lib/auth';
@@ -19,9 +20,13 @@ export async function GET(req: NextRequest) {
     const to = url.searchParams.get('to');
     const accountId = url.searchParams.get('accountId') || undefined;
 
-    let createdAt: { gte?: Date; lte?: Date } | undefined;
+    const where: Prisma.TransactionWhereInput = { userId: user.id };
+    if (type && type !== 'ALL') where.txType = type;
+    if (status && status !== 'ALL') where.status = status;
+    if (accountId) where.accountId = accountId;
+
     if (from || to) {
-      createdAt = {};
+      const createdAt: Prisma.DateTimeFilter = {};
       if (from) {
         const date = new Date(`${from}T00:00:00.000Z`);
         if (Number.isNaN(date.getTime())) return errorResponse('Invalid start date', 400);
@@ -32,21 +37,17 @@ export async function GET(req: NextRequest) {
         if (Number.isNaN(date.getTime())) return errorResponse('Invalid end date', 400);
         createdAt.lte = date;
       }
+      where.createdAt = createdAt;
     }
 
-    const where = {
-      userId: user.id,
-      ...(type && type !== 'ALL' ? { txType: type } : {}),
-      ...(status && status !== 'ALL' ? { status } : {}),
-      ...(accountId ? { accountId } : {}),
-      ...(createdAt ? { createdAt } : {}),
-      ...(q ? { OR: [
-        { description: { contains: q, mode: 'insensitive' as const } },
-        { merchantName: { contains: q, mode: 'insensitive' as const } },
-        { referenceId: { contains: q, mode: 'insensitive' as const } },
-        { id: { contains: q, mode: 'insensitive' as const } },
-      ] } : {}),
-    };
+    if (q) {
+      where.OR = [
+        { description: { contains: q, mode: 'insensitive' } },
+        { merchantName: { contains: q, mode: 'insensitive' } },
+        { referenceId: { contains: q, mode: 'insensitive' } },
+        { id: { contains: q, mode: 'insensitive' } },
+      ];
+    }
 
     const [items, total] = await Promise.all([
       prisma.transaction.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
