@@ -50,6 +50,7 @@ model User {
   scheduledPays  ScheduledPayment[]
   fraudAlerts    FraudAlert[]
   disputes       Dispute[]
+  verificationCodes TransactionVerificationCode[]
 
   @@map("users")
 }
@@ -536,4 +537,19 @@ model SecurityEvent {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, createdAt])
   @@map("security_events")
+}
+
+model TransactionVerificationCode {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  type        String
+  codeHash    String   @map("code_hash")
+  requestHash String   @map("request_hash")
+  attempts    Int      @default(0)
+  expiresAt   DateTime @map("expires_at")
+  usedAt      DateTime?
+  createdAt   DateTime @default(now()) @map("created_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, type, createdAt])
+  @@map("transaction_verification_codes")
 }
