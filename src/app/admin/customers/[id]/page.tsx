@@ -4,96 +4,21 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
-type Account = {
-  id: string;
-  accountType: string;
-  accountNumber: string;
-  routingNumber: string;
-  balance: string | number;
-  availableBalance: string | number;
-  currency: string;
-  status: string;
-  interestRate: string | number | null;
-  openedAt: string;
-};
-
-type Customer = {
-  id: string;
-  email: string;
-  phone: string | null;
-  firstName: string;
-  lastName: string;
-  bnkTag: string | null;
-  dateOfBirth: string | null;
-  kycStatus: string;
-  kycTier: number;
-  status: string;
-  country: string | null;
-  city: string | null;
-  state: string | null;
-  zipCode: string | null;
-  createdAt: string;
-  updatedAt: string;
-  totpEnabled: boolean;
-  sms2faEnabled: boolean;
-  accounts: Account[];
-  _count: { transactions: number; deposits: number; withdrawals: number; cards: number; notifications: number };
-};
-
-const money = (value: string | number, currency: string) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(value || 0));
-const label = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-const mask = (value: string) => (value.length > 4 ? `•••• ${value.slice(-4)}` : value);
-
-export default function AdminCustomerDetailsPage() {
-  const { id } = useParams<{ id: string }>();
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [visible, setVisible] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    fetch(`/api/v1/admin/customers/${encodeURIComponent(id)}`)
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok || !body.success) throw new Error(body.error || 'Unable to load customer');
-        return body.data as Customer;
-      })
-      .then(setCustomer)
-      .catch((reason: Error) => setError(reason.message))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) return <main className="mx-auto max-w-7xl px-4 py-8"><div className="h-8 w-56 animate-pulse rounded bg-slate-200" /><div className="mt-6 h-48 animate-pulse rounded-3xl bg-slate-200" /><div className="mt-6 h-72 animate-pulse rounded-2xl bg-slate-200" /></main>;
-  if (error || !customer) return <main className="mx-auto max-w-2xl px-4 py-16"><div className="rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-slate-200"><h1 className="text-xl font-bold">Customer unavailable</h1><p className="mt-2 text-sm text-slate-500">{error || 'The customer could not be found.'}</p><Link href="/admin/customers" className="mt-6 inline-flex rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white">Back to customers</Link></div></main>;
-
-  const fullName = `${customer.firstName} ${customer.lastName}`.trim();
-  const toggle = (accountId: string) => setVisible((current) => ({ ...current, [accountId]: !current[accountId] }));
-
-  return <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><Link href="/admin/customers" className="text-sm font-semibold text-indigo-700">← Customers</Link><h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{fullName || customer.email}</h1><p className="mt-1 text-sm text-slate-500">Customer profile, account numbers and banking details.</p></div>
-      <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">{label(customer.status)}</span>
-    </div>
-
-    <section className="mt-6 rounded-3xl bg-slate-950 p-6 text-white shadow-xl sm:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div><p className="text-sm text-slate-400">Customer</p><p className="mt-1 text-xl font-semibold">{fullName}</p><p className="mt-1 text-sm text-slate-400">{customer.email}</p>{customer.bnkTag && <p className="mt-3 text-sm text-slate-300">BNK Tag: <span className="font-semibold">{customer.bnkTag}</span></p>}</div>
-        <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4"><div className="rounded-2xl bg-white/10 px-4 py-3"><p className="text-xl font-bold">{customer.accounts.length}</p><p className="text-[11px] text-slate-400">Accounts</p></div><div className="rounded-2xl bg-white/10 px-4 py-3"><p className="text-xl font-bold">{customer._count.transactions}</p><p className="text-[11px] text-slate-400">Transactions</p></div><div className="rounded-2xl bg-white/10 px-4 py-3"><p className="text-xl font-bold">{customer._count.cards}</p><p className="text-[11px] text-slate-400">Cards</p></div><div className="rounded-2xl bg-white/10 px-4 py-3"><p className="text-xl font-bold">{customer.kycTier}</p><p className="text-[11px] text-slate-400">KYC tier</p></div></div>
-      </div>
-    </section>
-
-    <section className="mt-6">
-      <div className="mb-4"><h2 className="text-xl font-bold text-slate-950">Bank accounts</h2><p className="mt-1 text-sm text-slate-500">Account numbers are protected by default and can be revealed when required.</p></div>
-      {customer.accounts.length === 0 ? <div className="rounded-2xl bg-white p-10 text-center shadow-sm ring-1 ring-slate-200"><p className="font-semibold">No active accounts</p><p className="mt-1 text-sm text-slate-500">This customer has no non-closed accounts.</p></div> : <div className="grid gap-4 lg:grid-cols-2">{customer.accounts.map((account) => <article key={account.id} className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-        <div className="bg-slate-900 p-6 text-white"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{label(account.accountType)}</p><p className="mt-3 text-3xl font-bold">{money(account.balance, account.currency)}</p><p className="mt-1 text-sm text-slate-400">Available {money(account.availableBalance, account.currency)}</p></div><span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">{label(account.status)}</span></div></div>
-        <div className="space-y-4 p-6"><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Account number</p><p className="mt-1 break-all font-mono text-lg font-bold tracking-wider text-slate-950">{visible[account.id] ? account.accountNumber : mask(account.accountNumber)}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => toggle(account.id)} className="rounded-xl bg-slate-950 px-4 py-2 text-xs font-bold text-white">{visible[account.id] ? 'Hide number' : 'Reveal number'}</button><button type="button" onClick={() => navigator.clipboard.writeText(account.accountNumber)} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700">Copy number</button></div></div><dl className="grid gap-4 sm:grid-cols-2"><div><dt className="text-xs text-slate-500">Routing number</dt><dd className="mt-1 font-mono text-sm font-semibold">{account.routingNumber}</dd></div><div><dt className="text-xs text-slate-500">Currency</dt><dd className="mt-1 text-sm font-semibold">{account.currency}</dd></div><div><dt className="text-xs text-slate-500">Opened</dt><dd className="mt-1 text-sm font-semibold">{new Date(account.openedAt).toLocaleDateString()}</dd></div><div><dt className="text-xs text-slate-500">Interest rate</dt><dd className="mt-1 text-sm font-semibold">{account.interestRate == null ? '—' : `${Number(account.interestRate).toFixed(2)}%`}</dd></div></dl><Link href={`/admin/accounts?q=${encodeURIComponent(account.accountNumber)}`} className="inline-flex text-sm font-bold text-indigo-700">Open in accounts →</Link></div>
-      </article>)}</div>}
-    </section>
-
-    <section className="mt-6 grid gap-4 lg:grid-cols-2">
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><h2 className="font-bold text-slate-950">Customer details</h2><dl className="mt-4 grid gap-4 sm:grid-cols-2">{[['Email', customer.email], ['Phone', customer.phone || '—'], ['KYC status', label(customer.kycStatus)], ['Country', customer.country || '—'], ['City', customer.city || '—'], ['State', customer.state || '—'], ['ZIP', customer.zipCode || '—'], ['Joined', new Date(customer.createdAt).toLocaleDateString()]].map(([name, value]) => <div key={name}><dt className="text-xs text-slate-500">{name}</dt><dd className="mt-1 break-words text-sm font-semibold">{value}</dd></div>)}</dl></div>
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><h2 className="font-bold text-slate-950">Security</h2><dl className="mt-4 space-y-4 text-sm"><div className="flex justify-between gap-4"><dt className="text-slate-500">Authenticator 2FA</dt><dd className="font-semibold">{customer.totpEnabled ? 'Enabled' : 'Disabled'}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">SMS 2FA</dt><dd className="font-semibold">{customer.sms2faEnabled ? 'Enabled' : 'Disabled'}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">Deposits</dt><dd className="font-semibold">{customer._count.deposits}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">Withdrawals</dt><dd className="font-semibold">{customer._count.withdrawals}</dd></div></dl></div>
-    </section>
-  </main>;
+type Account={id:string;accountType:string;accountNumber:string;routingNumber:string;balance:string|number;availableBalance:string|number;currency:string;status:string;interestRate:string|number|null;openedAt:string};
+type Customer={id:string;email:string;firstName:string;lastName:string;status:string;transferBlocked:boolean;transferBlockMessage:string|null;withdrawalBlocked:boolean;withdrawalBlockMessage:string|null;accounts:Account[];kycStatus:string;kycTier:number;phone:string|null;country:string|null;city:string|null;state:string|null;zipCode:string|null;createdAt:string;totpEnabled:boolean;sms2faEnabled:boolean;bnkTag:string|null;_count:{transactions:number;deposits:number;withdrawals:number;cards:number;notifications:number}};
+const money=(v:string|number,c:string)=>new Intl.NumberFormat('en-US',{style:'currency',currency:c}).format(Number(v||0));
+const mask=(v:string)=>v.length>4?'•••• '+v.slice(-4):v;
+export default function AdminCustomerDetailsPage(){
+ const{id}=useParams<{id:string}>(); const[c,setC]=useState<Customer|null>(null); const[loading,setLoading]=useState(true); const[error,setError]=useState('');
+ const[form,setForm]=useState({accountId:'',amount:'',reason:'',direction:'credit'}); const[blocks,setBlocks]=useState({transferBlocked:false,transferBlockMessage:'',withdrawalBlocked:false,withdrawalBlockMessage:''}); const[msg,setMsg]=useState('');
+ async function load(){const r=await fetch('/api/v1/admin/customers/'+encodeURIComponent(id));const x=await r.json();if(!r.ok||!x.success)throw new Error(x.error||'Unable to load customer');setC(x.data);setBlocks({transferBlocked:x.data.transferBlocked,transferBlockMessage:x.data.transferBlockMessage||'',withdrawalBlocked:x.data.withdrawalBlocked,withdrawalBlockMessage:x.data.withdrawalBlockMessage||''});if(!form.accountId&&x.data.accounts[0])setForm(f=>({...f,accountId:x.data.accounts[0].id}));}
+ useEffect(()=>{load().catch(e=>setError(e.message)).finally(()=>setLoading(false))},[id]);
+ async function balance(e:React.FormEvent){e.preventDefault();setMsg('');const r=await fetch('/api/v1/admin/customers/'+encodeURIComponent(id),{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({action:'balance',...form})});const x=await r.json();if(!r.ok||!x.success)return setMsg(x.error||'Balance adjustment failed');setMsg('Balance adjustment completed.');await load();}
+ async function saveBlocks(e:React.FormEvent){e.preventDefault();setMsg('');const r=await fetch('/api/v1/admin/customers/'+encodeURIComponent(id),{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({action:'transaction-blocks',...blocks})});const x=await r.json();if(!r.ok||!x.success)return setMsg(x.error||'Could not update restrictions');setMsg('Transaction restrictions updated.');await load();}
+ if(loading)return <main className="mx-auto max-w-7xl px-4 py-8"><div className="h-8 w-56 animate-pulse rounded bg-slate-200"/><div className="mt-6 h-48 animate-pulse rounded-3xl bg-slate-200"/></main>;
+ if(error||!c)return <main className="mx-auto max-w-2xl px-4 py-16"><div className="rounded-2xl bg-white p-10 text-center ring-1 ring-slate-200"><h1 className="text-xl font-bold">Customer unavailable</h1><p className="mt-2 text-sm text-slate-500">{error||'Customer not found'}</p><Link href="/admin/customers" className="mt-6 inline-flex rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white">Back to customers</Link></div></main>;
+ return <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8"><div className="flex flex-wrap items-center justify-between gap-3"><div><Link href="/admin/customers" className="text-sm font-semibold text-indigo-700">← Customers</Link><h1 className="mt-2 text-3xl font-bold">{c.firstName} {c.lastName}</h1><p className="mt-1 text-sm text-slate-500">{c.email}</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold">{c.status}</span></div>
+ <section className="mt-6 grid gap-4 lg:grid-cols-2"><form onSubmit={balance} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><h2 className="text-xl font-bold">Adjust customer balance</h2><p className="mt-1 text-sm text-slate-500">Use the authoritative ledger. Every adjustment requires a reason.</p><select className="mt-5 input-field" value={form.accountId} onChange={e=>setForm({...form,accountId:e.target.value})}>{c.accounts.map(a=><option key={a.id} value={a.id}>•••• {a.accountNumber.slice(-4)} — {money(a.balance,a.currency)}</option>)}</select><select className="mt-3 input-field" value={form.direction} onChange={e=>setForm({...form,direction:e.target.value})}><option value="credit">Add balance</option><option value="debit">Remove balance</option></select><input className="mt-3 input-field" required placeholder="Amount" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/><textarea className="mt-3 input-field min-h-24" required placeholder="Reason" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})}/><button className="mt-4 btn-primary w-full">Apply balance change</button></form>
+ <form onSubmit={saveBlocks} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><h2 className="text-xl font-bold">Transaction restrictions</h2><p className="mt-1 text-sm text-slate-500">Block transfer/send money and withdrawals independently with a customer-facing message.</p><label className="mt-5 flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={blocks.transferBlocked} onChange={e=>setBlocks({...blocks,transferBlocked:e.target.checked})}/>Block transfers / send money</label><textarea className="mt-3 input-field min-h-20" disabled={!blocks.transferBlocked} placeholder="Message shown to customer" value={blocks.transferBlockMessage} onChange={e=>setBlocks({...blocks,transferBlockMessage:e.target.value})}/><label className="mt-5 flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={blocks.withdrawalBlocked} onChange={e=>setBlocks({...blocks,withdrawalBlocked:e.target.checked})}/>Block withdrawals</label><textarea className="mt-3 input-field min-h-20" disabled={!blocks.withdrawalBlocked} placeholder="Message shown to customer" value={blocks.withdrawalBlockMessage} onChange={e=>setBlocks({...blocks,withdrawalBlockMessage:e.target.value})}/><button className="mt-4 btn-primary w-full">Save restrictions</button>{msg&&<p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm">{msg}</p>}</form></section>
+ <section className="mt-6 grid gap-4 md:grid-cols-2">{c.accounts.map(a=><article key={a.id} className="rounded-3xl bg-slate-950 p-6 text-white"><p className="text-xs uppercase tracking-widest text-slate-400">{a.accountType}</p><p className="mt-3 text-3xl font-bold">{money(a.balance,a.currency)}</p><p className="mt-1 text-sm text-slate-400">Available {money(a.availableBalance,a.currency)}</p><p className="mt-6 font-mono text-sm">{mask(a.accountNumber)}</p><Link className="mt-4 inline-flex text-sm font-semibold text-indigo-300" href={'/admin/accounts?q='+encodeURIComponent(a.accountNumber)}>Open account →</Link></article>)}</section></main>;
 }
