@@ -4,12 +4,122 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-interface Metrics{users:{total:number;active:number};accounts:{total:number;totalBalance:number};kyc:{pending:number};transactions:{today:number};disputes:{open:number};fraud:{openAlerts:number}}
-const links=[['/admin/customers','Customers','Search and review customer accounts'],['/admin/accounts','Accounts','Balances, ownership and status'],['/admin/transactions','Transactions','Review financial activity'],['/admin/transfers','Transfers','Monitor transfer operations'],['/admin/deposits','Deposits','Review deposit activity'],['/admin/withdrawals','Withdrawals','Review withdrawal requests'],['/admin/users','Users','Manage platform users'],['/admin/roles','Roles','Review administrative access'],['/admin/audit-logs','Audit logs','Inspect sensitive actions'],['/admin/settings','Settings','Platform configuration']];
-export default function AdminDashboardPage(){
- const router=useRouter(); const [metrics,setMetrics]=useState<Metrics|null>(null); const [loading,setLoading]=useState(true); const [error,setError]=useState('');
- useEffect(()=>{fetch('/api/v1/admin/metrics').then(async r=>{const x=await r.json();if(!r.ok||!x.success)throw new Error(x.error||'Unable to load metrics');setMetrics(x.data)}).catch(e=>setError(e.message)).finally(()=>setLoading(false))},[]);
- async function logout(){await fetch('/api/v1/auth/logout',{method:'POST'});router.push('/admin/login');router.refresh()}
- const currency=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
- return <div className="min-h-screen bg-slate-950 text-white"><header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/95 backdrop-blur"><div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"><Link href="/admin/dashboard" className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 font-bold">C</span><span className="font-bold tracking-tight">Crestline Capital <span className="font-normal text-slate-500">/ Admin</span></span></Link><button onClick={logout} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-900">Sign out</button></div></header><main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-9"><div><p className="text-sm font-medium text-indigo-400">Administration</p><h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Platform overview</h1><p className="mt-1 text-sm text-slate-400">Live operational metrics from the banking database.</p></div>{error&&<div className="mt-5 rounded-xl border border-red-900 bg-red-950/40 p-4 text-sm text-red-200">{error}</div>}<div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[['Customers',metrics?.users.total??0],['Active customers',metrics?.users.active??0],['Accounts',metrics?.accounts.total??0],['Account balances',currency.format(metrics?.accounts.totalBalance??0)],['Today's transactions',metrics?.transactions.today??0],['Pending KYC',metrics?.kyc.pending??0],['Open disputes',metrics?.disputes.open??0],['Open fraud alerts',metrics?.fraud.openAlerts??0]].map(([label,value])=><div key={String(label)} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p><p className="mt-3 text-2xl font-bold">{loading?'—':value}</p></div>)}</div><section className="mt-9"><div className="mb-4"><h2 className="text-lg font-semibold">Management</h2><p className="text-sm text-slate-400">Authorized operational areas.</p></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{links.map(([href,label,desc])=><Link key={href} href={href} className="rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-indigo-500 hover:bg-slate-900/80"><p className="font-semibold">{label}</p><p className="mt-1 text-sm text-slate-400">{desc}</p><span className="mt-4 inline-block text-xs font-semibold text-indigo-400">Open →</span></Link>)}</div></section></main></div>
+interface Metrics {
+  users: { total: number; active: number };
+  accounts: { total: number; totalBalance: number };
+  kyc: { pending: number };
+  transactions: { today: number };
+  disputes: { open: number };
+  fraud: { openAlerts: number };
+}
+
+const links = [
+  ['/admin/customers', 'Customers', 'Search and review customer accounts'],
+  ['/admin/accounts', 'Accounts', 'Balances, ownership and status'],
+  ['/admin/transactions', 'Transactions', 'Review financial activity'],
+  ['/admin/transfers', 'Transfers', 'Monitor transfer operations'],
+  ['/admin/deposits', 'Deposits', 'Review deposit activity'],
+  ['/admin/withdrawals', 'Withdrawals', 'Review withdrawal requests'],
+  ['/admin/users', 'Users', 'Manage platform users'],
+  ['/admin/roles', 'Roles', 'Review administrative access'],
+  ['/admin/audit-logs', 'Audit logs', 'Inspect sensitive actions'],
+  ['/admin/settings', 'Settings', 'Platform configuration'],
+];
+
+export default function AdminDashboardPage() {
+  const router = useRouter();
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/v1/admin/metrics')
+      .then(async (r) => {
+        const x = await r.json();
+        if (!r.ok || !x.success) throw new Error(x.error || 'Unable to load metrics');
+        setMetrics(x.data);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function logout() {
+    await fetch('/api/v1/auth/logout', { method: 'POST' });
+    router.push('/admin/login');
+    router.refresh();
+  }
+
+  const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+  const metricCards = [
+    ['Customers', metrics?.users.total ?? 0],
+    ['Active customers', metrics?.users.active ?? 0],
+    ['Accounts', metrics?.accounts.total ?? 0],
+    ['Account balances', currency.format(metrics?.accounts.totalBalance ?? 0)],
+    ["Today's transactions", metrics?.transactions.today ?? 0],
+    ['Pending KYC', metrics?.kyc.pending ?? 0],
+    ['Open disputes', metrics?.disputes.open ?? 0],
+    ['Open fraud alerts', metrics?.fraud.openAlerts ?? 0],
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/95 backdrop-blur">
+        <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link href="/admin/dashboard" className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 font-bold">C</span>
+            <span className="font-bold tracking-tight">
+              Crestline Capital <span className="font-normal text-slate-500">/ Admin</span>
+            </span>
+          </Link>
+          <button onClick={logout} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-900">
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
+        <div>
+          <p className="text-sm font-medium text-indigo-400">Administration</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Platform overview</h1>
+          <p className="mt-1 text-sm text-slate-400">Live operational metrics from the banking database.</p>
+        </div>
+
+        {error && (
+          <div className="mt-5 rounded-xl border border-red-900 bg-red-950/40 p-4 text-sm text-red-200">
+            {error}
+          </div>
+        )}
+
+        <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {metricCards.map(([label, value]) => (
+            <div key={String(label)} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+              <p className="mt-3 text-2xl font-bold">{loading ? '—' : value}</p>
+            </div>
+          ))}
+        </div>
+
+        <section className="mt-9">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold">Management</h2>
+            <p className="text-sm text-slate-400">Authorized operational areas.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {links.map(([href, label, desc]) => (
+              <Link
+                key={href}
+                href={href}
+                className="rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-indigo-500 hover:bg-slate-900/80"
+              >
+                <p className="font-semibold">{label}</p>
+                <p className="mt-1 text-sm text-slate-400">{desc}</p>
+                <span className="mt-4 inline-block text-xs font-semibold text-indigo-400">Open →</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
 }
