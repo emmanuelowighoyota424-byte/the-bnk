@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import BankNav from '@/components/BankNav';
+import BankNav from '../../components/BankNav';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
