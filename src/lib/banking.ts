@@ -18,7 +18,8 @@ type JournalInput = {
   idempotencyKey?: string;
   debitTransaction: { accountId: string; userId: string; description: string; idempotencyKey?: string; ipAddress?: string };
   creditTransaction: { accountId: string; userId: string; description: string };
-  txType: string;
+  debitTxType: string;
+  creditTxType: string;
 };
 
 function isRetryableTransactionError(error: unknown) {
@@ -94,7 +95,7 @@ async function postJournal(tx: Prisma.TransactionClient, input: JournalInput) {
     data: {
       accountId: input.debitTransaction.accountId,
       userId: input.debitTransaction.userId,
-      txType: input.txType,
+      txType: input.debitTxType,
       amount: input.amount,
       currency: input.currency,
       description: input.debitTransaction.description,
@@ -179,7 +180,8 @@ export async function transferFunds(userId: string, input: { senderAccountId: st
       idempotencyKey: input.idempotencyKey,
       debitTransaction: { accountId: sender.id, userId, description: input.description || 'Transfer', idempotencyKey: input.idempotencyKey, ipAddress: meta.ip },
       creditTransaction: { accountId: recipient.id, userId: recipient.userId, description: input.description || 'Transfer received' },
-      txType: 'TRANSFER',
+      debitTxType: 'TRANSFER_OUT',
+      creditTxType: 'TRANSFER_IN',
     });
     const updated = await tx.transfer.update({ where: { id: transfer.id }, data: { status: 'completed', completedAt: new Date() } });
     await tx.notification.createMany({ data: [
@@ -225,7 +227,8 @@ export async function approveDeposit(adminId: string, depositId: string, reason?
       movementId: deposit.id,
       debitTransaction: { accountId: clearing.id, userId: clearing.userId, description: 'Deposit funding / clearing' },
       creditTransaction: { accountId: account.id, userId: deposit.userId, description: deposit.description || 'Deposit' },
-      txType: 'DEPOSIT',
+      debitTxType: 'DEBIT',
+      creditTxType: 'DEPOSIT',
     });
     const updated = await tx.deposit.update({ where: { id: deposit.id }, data: { status: 'completed', completedAt: new Date() } });
     await tx.notification.create({ data: { userId: deposit.userId, type: 'DEPOSIT_COMPLETED', title: 'Deposit completed', message: `Your $${deposit.amount.toFixed(2)} deposit was approved.` } });
@@ -282,7 +285,8 @@ export async function approveWithdrawal(adminId: string, withdrawalId: string, r
       movementId: withdrawal.id,
       debitTransaction: { accountId: account.id, userId: withdrawal.userId, description: withdrawal.description || 'Withdrawal' },
       creditTransaction: { accountId: clearing.id, userId: clearing.userId, description: 'Withdrawal clearing' },
-      txType: 'WITHDRAWAL',
+      debitTxType: 'WITHDRAWAL',
+      creditTxType: 'CREDIT',
     });
     const updated = await tx.withdrawal.update({ where: { id: withdrawal.id }, data: { status: 'completed', reviewedAt: new Date(), reviewedBy: adminId } });
     await tx.notification.create({ data: { userId: withdrawal.userId, type: 'WITHDRAWAL_APPROVED', title: 'Withdrawal approved', message: `Your $${withdrawal.amount.toFixed(2)} withdrawal was approved.` } });
