@@ -87,7 +87,7 @@ export default function DashboardPage(){
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Quick href="/transfer" title="Send money" icon="↗" />
             <Quick href="/transfer" title="Transfer" icon="⇄" />
-            <Quick href="/deposit" title="Deposit" icon="↓" />
+            <Quick href="/cards" title="Cards" icon="▣" />
             <Quick href="/withdraw" title="Withdraw" icon="↑" />
           </div>
         </section>
