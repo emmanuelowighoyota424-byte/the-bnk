@@ -10,19 +10,21 @@ function isAdminPath(pathname: string): boolean { return ADMIN_PATHS.some((p) =>
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (isPublicPath(pathname)) return NextResponse.next();
+  const adminPath = isAdminPath(pathname);
   const accessToken = request.cookies.get('access_token')?.value;
   if (!accessToken) {
     if (pathname.startsWith('/api/')) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    const loginPath = isAdminPath(pathname) ? '/admin/login' : '/login';
-    return NextResponse.redirect(new URL(loginPath, request.url));
+    return NextResponse.redirect(new URL(adminPath ? '/admin/login' : '/login', request.url));
   }
   const payload = await verifyAccessToken(accessToken);
   if (!payload) {
-    const response = pathname.startsWith('/api/') ? NextResponse.json({ success: false, error: 'Token expired' }, { status: 401 }) : NextResponse.redirect(new URL('/login', request.url));
-    response.cookies.set('access_token', '', { maxAge: 0 });
+    const response = pathname.startsWith('/api/')
+      ? NextResponse.json({ success: false, error: 'Token expired' }, { status: 401 })
+      : NextResponse.redirect(new URL(adminPath ? '/admin/login' : '/login', request.url));
+    response.cookies.set('access_token', '', { maxAge: 0, httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/' });
     return response;
   }
-  if (isAdminPath(pathname) && payload.role !== 'admin') {
+  if (adminPath && payload.role !== 'admin') {
     return pathname.startsWith('/api/') ? NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 }) : NextResponse.redirect(new URL('/admin/login', request.url));
   }
   if (pathname.startsWith('/api/')) {
