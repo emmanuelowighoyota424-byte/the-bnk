@@ -13,7 +13,7 @@ const primary = [
 ];
 
 const money = [
-  ['/deposit', 'Deposit', '↓'],
+  ['/cards', 'Cards', '▰'],
   ['/withdraw', 'Withdraw', '↑'],
 ];
 
