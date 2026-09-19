@@ -20,6 +20,7 @@ type JournalInput = {
   creditTransaction: { accountId: string; userId: string; description: string };
   debitTxType: string;
   creditTxType: string;
+  allowNegativeDebit?: boolean;
 };
 
 function isRetryableTransactionError(error: unknown) {
@@ -75,7 +76,9 @@ async function postJournal(tx: Prisma.TransactionClient, input: JournalInput) {
   `;
 
   const debitResult = await tx.account.updateMany({
-    where: { id: input.debitAccountId, status: 'active', availableBalance: { gte: input.amount } },
+    where: input.allowNegativeDebit
+      ? { id: input.debitAccountId, status: 'active' }
+      : { id: input.debitAccountId, status: 'active', availableBalance: { gte: input.amount } },
     data: { balance: { decrement: input.amount }, availableBalance: { decrement: input.amount } },
   });
   if (debitResult.count !== 1) throw new Error('Insufficient funds');
@@ -225,6 +228,7 @@ export async function adjustCustomerBalance(adminId: string, input: { userId: st
       },
       debitTxType: input.direction === 'credit' ? 'DEBIT' : 'WITHDRAWAL',
       creditTxType: input.direction === 'credit' ? 'DEPOSIT' : 'CREDIT',
+      allowNegativeDebit: input.direction === 'credit',
     });
     await tx.notification.create({
       data: {
