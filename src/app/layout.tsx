@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Crestline Capital — Digital Banking Ecosystem',
-  description: 'Modern digital banking for secure accounts, transfers, deposits and withdrawals.',
+  title: { template: '%s | Crestline Capital', default: 'Crestline Capital — Digital Banking' },
+  description: 'Crestline Capital — secure digital banking for accounts, money movement, statements and account security.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
