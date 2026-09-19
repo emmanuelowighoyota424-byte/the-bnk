@@ -1,1 +1,1 @@
-import AdminResourcePage from '@/components/AdminResourcePage'; export default function Accounts(){return <AdminResourcePage title="Accounts" resource="accounts" columns={['AccountNumber','AccountType','Currency','Balance','AvailableBalance','Status','OpenedAt']}/>}
+import AdminResourcePage from '../../../components/AdminResourcePage'; export default function Accounts(){return <AdminResourcePage title="Accounts" resource="accounts" columns={['AccountNumber','AccountType','Currency','Balance','AvailableBalance','Status','OpenedAt']}/>}
