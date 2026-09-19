@@ -1,0 +1,7 @@
+import { NextRequest } from 'next/server';
+import prisma from '@/lib/prisma';
+import { getCurrentAdmin } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
+import { errorResponse, successResponse, unauthorizedResponse, forbiddenResponse } from '@/lib/api-utils';
+export async function GET(){const admin=await getCurrentAdmin();if(!admin)return unauthorizedResponse();if(!hasPermission(admin.role.permissions as string[],'cards.read'))return forbiddenResponse();return successResponse(await prisma.card.findMany({orderBy:{createdAt:'desc'},take:100,include:{user:{select:{id:true,email:true,firstName:true,lastName:true}},account:{select:{accountNumber:true,currency:true}}}));}
+export async function POST(req:NextRequest){const admin=await getCurrentAdmin();if(!admin)return unauthorizedResponse();if(!hasPermission(admin.role.permissions as string[],'cards.manage'))return forbiddenResponse();const body=await req.json();const userId=String(body.userId||''),accountId=String(body.accountId||''),cardType=String(body.cardType||'debit');if(!userId||!accountId)return errorResponse('userId and accountId are required',400);const account=await prisma.account.findFirst({where:{id:accountId,userId}});if(!account)return errorResponse('Customer account not found',404);const card=await prisma.card.create({data:{userId,accountId,cardType,cardNetwork:'visa',lastFour:String(Math.floor(1000+Math.random()*9000)),expiryMonth:new Date().getMonth()+1,expiryYear:new Date().getFullYear()+4,isVirtual:true}});return successResponse(card,201);}
