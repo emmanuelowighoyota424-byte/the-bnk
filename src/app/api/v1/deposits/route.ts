@@ -14,6 +14,7 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return unauthorizedResponse();
+  if (req.method === 'POST') return errorResponse('Customer manual deposits are disabled. Deposits are administered by Crestline Capital.', 403);
   const v = validateBody(schema, await req.json());
   if (!v.success) return errorResponse('Validation failed', 400, v.errors);
   const idempotencyKey = req.headers.get('idempotency-key') || crypto.randomUUID();
