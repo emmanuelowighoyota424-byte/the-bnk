@@ -55,8 +55,8 @@ export async function GET(req: NextRequest, { params }: { params: { resource: st
           { user: { email: { contains: q, mode: 'insensitive' as const } } },
         ] } : undefined;
         const [rows, total] = await prisma.$transaction([
-          prisma.KYCDocument.findMany({ where, select: { id: true, docType: true, verificationStatus: true, reviewerId: true, reviewNotes: true, reviewedAt: true, createdAt: true, user: { select: { id: true, email: true, firstName: true, lastName: true, kycStatus: true } } }, orderBy: { createdAt: 'desc' }, skip, take: pageSize }),
-          prisma.KYCDocument.count({ where }),
+          prisma.kYCDocument.findMany({ where, select: { id: true, docType: true, verificationStatus: true, reviewerId: true, reviewNotes: true, reviewedAt: true, createdAt: true, user: { select: { id: true, email: true, firstName: true, lastName: true, kycStatus: true } } }, orderBy: { createdAt: 'desc' }, skip, take: pageSize }),
+          prisma.kYCDocument.count({ where }),
         ]);
         return response(rows, total, page, pageSize);
       }
