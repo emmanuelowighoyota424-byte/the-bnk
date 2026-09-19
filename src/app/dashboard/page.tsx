@@ -42,7 +42,24 @@ export default function DashboardPage(){
 
   async function logout(){await fetch('/api/v1/auth/logout',{method:'POST'});router.push('/login');router.refresh();}
 
-  if(loading) return <div className="min-h-screen bg-slate-50"><BankNav/><main className="page-container lg:pl-[17rem]"><div className="animate-pulse space-y-6"><div className="h-8 w-64 rounded bg-slate-200"/><div className="h-40 rounded-2xl bg-slate-200"/><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><div className="h-40 rounded-2xl bg-slate-200"/><div className="h-40 rounded-2xl bg-slate-200"/><div className="h-40 rounded-2xl bg-slate-200"/></div></div></main></div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <BankNav />
+        <main className="page-container lg:pl-[17rem]">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 w-64 rounded bg-slate-200" />
+            <div className="h-40 rounded-2xl bg-slate-200" />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="h-40 rounded-2xl bg-slate-200" />
+              <div className="h-40 rounded-2xl bg-slate-200" />
+              <div className="h-40 rounded-2xl bg-slate-200" />
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f6f5f2] pb-20 lg:pb-0">
