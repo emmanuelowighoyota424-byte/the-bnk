@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { generateAccountNumber } from '@/lib/account-number';
 import prisma from '@/lib/prisma';
 import { signAccessToken, signRefreshToken, setTokenCookie, createUserSession, logAudit, checkRateLimit } from '@/lib/auth';
 import { successResponse, errorResponse, validateBody } from '@/lib/api-utils';
@@ -20,7 +21,21 @@ export async function POST(request: Request) {
     const baseTag = `${firstName.toLowerCase()}.${lastName.toLowerCase()}`.replace(/[^a-z0-9.]/g,'');
     let bnkTag = baseTag; let s=1;
     while (await prisma.user.findUnique({ where: { bnkTag } })) { bnkTag = `${baseTag}${s}`; s++; }
-    const user = await prisma.user.create({ data: { email, passwordHash, firstName, lastName, phone, bnkTag, status: 'active', kycStatus: 'pending', kycTier: 0 } });
+    let user;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        user = await prisma.$transaction(async (tx) => {
+          const createdUser = await tx.user.create({ data: { email, passwordHash, firstName, lastName, phone, bnkTag, status: 'active', kycStatus: 'pending', kycTier: 0 } });
+          await tx.account.create({ data: { userId: createdUser.id, accountType: 'checking', accountNumber: generateAccountNumber(), currency: 'USD', balance: 0, availableBalance: 0, status: 'active' } });
+          return createdUser;
+        });
+        break;
+      } catch (error) {
+        if ((error as { code?: string }).code === 'P2002' && String(error).includes('account_number')) continue;
+        throw error;
+      }
+    }
+    if (!user) throw new Error('Unable to provision account');
     const accessToken = await signAccessToken({ sub: user.id, email: user.email });
     const refreshToken = await signRefreshToken({ sub: user.id, email: user.email });
     await createUserSession(user.id, refreshToken, ip);
