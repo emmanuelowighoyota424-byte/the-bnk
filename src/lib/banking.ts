@@ -113,7 +113,7 @@ async function postJournal(tx: Prisma.TransactionClient, input: JournalInput) {
     data: {
       accountId: input.creditTransaction.accountId,
       userId: input.creditTransaction.userId,
-      txType: input.txType,
+      txType: input.creditTxType,
       amount: input.amount,
       currency: input.currency,
       description: input.creditTransaction.description,
