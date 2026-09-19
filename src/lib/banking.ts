@@ -203,6 +203,7 @@ export async function adjustCustomerBalance(adminId: string, input: { userId: st
   const amount = money(input.amount);
   if (amount.lte(0)) throw new Error('Amount must be greater than zero');
   if (!input.reason.trim()) throw new Error('A reason is required');
+
   const result = await serializableTransaction(async (tx) => {
     const customer = await tx.user.findUnique({ where: { id: input.userId }, select: { id: true } });
     if (!customer) throw new Error('Customer not found');
@@ -210,12 +211,16 @@ export async function adjustCustomerBalance(adminId: string, input: { userId: st
     if (!account || account.status !== 'active') throw new Error('Customer account is not active');
     const clearing = await tx.account.findFirst({ where: { accountType: 'CLEARING', currency: account.currency, status: 'active' } });
     if (!clearing || clearing.id === account.id) throw new Error('Clearing account is not configured');
+
     const reference = ref(input.direction === 'credit' ? 'ADMCR' : 'ADMDR');
     const posted = await postJournal(tx, {
-      reference, currency: account.currency, amount,
+      reference,
+      currency: account.currency,
+      amount,
       debitAccountId: input.direction === 'credit' ? clearing.id : account.id,
       creditAccountId: input.direction === 'credit' ? account.id : clearing.id,
-      movementType: 'ADMIN_ADJUSTMENT', movementId: reference,
+      movementType: 'ADMIN_ADJUSTMENT',
+      movementId: reference,
       debitTransaction: {
         accountId: input.direction === 'credit' ? clearing.id : account.id,
         userId: input.direction === 'credit' ? clearing.userId : input.userId,
@@ -230,138 +235,27 @@ export async function adjustCustomerBalance(adminId: string, input: { userId: st
       creditTxType: input.direction === 'credit' ? 'DEPOSIT' : 'CREDIT',
       allowNegativeDebit: input.direction === 'credit',
     });
+
     await tx.notification.create({
       data: {
         userId: input.userId,
         type: 'ADMIN_BALANCE_ADJUSTMENT',
         title: input.direction === 'credit' ? 'Balance added' : 'Balance adjusted',
-        message: 'Crestline Capital ' + (input.direction === 'credit' ? 'added' : 'removed') + ' 
-  const existing = await prisma.deposit.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
-  if (existing) { if (existing.userId !== userId) throw new Error('Invalid idempotency key'); return { deposit: existing, replayed: true }; }
-  const amount = money(input.amount);
-  if (amount.lte(0)) throw new Error('Amount must be greater than zero');
-  const account = await prisma.account.findFirst({ where: { id: input.accountId, userId } });
-  if (!account) throw new Error('Account not found');
-  if (account.status !== 'active') throw new Error('Account is not active');
-  const deposit = await prisma.deposit.create({ data: { accountId: account.id, userId, amount, currency: account.currency, reference: ref('DEP'), status: 'pending', description: input.description, idempotencyKey: input.idempotencyKey } });
-  await prisma.notification.create({ data: { userId, type: 'DEPOSIT_SUBMITTED', title: 'Deposit submitted', message: `Your $${amount.toFixed(2)} deposit request is pending review.` } });
-  await logAudit({ actorId: userId, actorType: 'user', action: 'deposit.created', entityType: 'deposit', entityId: deposit.id });
-  return { deposit, replayed: false };
-}
-
-export async function approveDeposit(adminId: string, depositId: string, reason?: string) {
-  const result = await serializableTransaction(async (tx) => {
-    const deposit = await tx.deposit.findUnique({ where: { id: depositId } });
-    if (!deposit) throw new Error('Deposit not found');
-    if (deposit.status === 'completed') return deposit;
-    if (deposit.status !== 'pending') throw new Error('Deposit is no longer pending');
-    const account = await tx.account.findUnique({ where: { id: deposit.accountId } });
-    if (!account || account.status !== 'active') throw new Error('Account is not active');
-    const clearing = await tx.account.findFirst({ where: { accountType: 'CLEARING', currency: deposit.currency, status: 'active' } });
-    if (!clearing || clearing.id === account.id) throw new Error('Deposit clearing account is not configured');
-
-    await postJournal(tx, {
-      reference: deposit.reference,
-      currency: deposit.currency,
-      amount: deposit.amount,
-      debitAccountId: clearing.id,
-      creditAccountId: account.id,
-      movementType: 'DEPOSIT',
-      movementId: deposit.id,
-      debitTransaction: { accountId: clearing.id, userId: clearing.userId, description: 'Deposit funding / clearing' },
-      creditTransaction: { accountId: account.id, userId: deposit.userId, description: deposit.description || 'Deposit' },
-      debitTxType: 'DEBIT',
-      creditTxType: 'DEPOSIT',
-    });
-    const updated = await tx.deposit.update({ where: { id: deposit.id }, data: { status: 'completed', completedAt: new Date() } });
-    await tx.notification.create({ data: { userId: deposit.userId, type: 'DEPOSIT_COMPLETED', title: 'Deposit completed', message: `Your $${deposit.amount.toFixed(2)} deposit was approved.` } });
-    return updated;
-  });
-  await logAudit({ actorId: adminId, actorType: 'admin', action: 'deposit.approve', entityType: 'deposit', entityId: depositId, changes: reason ? { reason } : undefined });
-  return result;
-}
-
-export async function rejectDeposit(adminId: string, depositId: string, reason?: string) {
-  const result = await serializableTransaction(async (tx) => {
-    const deposit = await tx.deposit.findUnique({ where: { id: depositId } });
-    if (!deposit) throw new Error('Deposit not found');
-    if (deposit.status === 'rejected') return deposit;
-    if (deposit.status !== 'pending') throw new Error('Deposit is no longer pending');
-    const updated = await tx.deposit.update({ where: { id: depositId }, data: { status: 'rejected' } });
-    await tx.notification.create({ data: { userId: deposit.userId, type: 'DEPOSIT_REJECTED', title: 'Deposit rejected', message: reason ? `Your deposit was rejected: ${reason}` : 'Your deposit request was rejected.' } });
-    return updated;
-  });
-  await logAudit({ actorId: adminId, actorType: 'admin', action: 'deposit.reject', entityType: 'deposit', entityId: depositId, changes: reason ? { reason } : undefined });
-  return result;
-}
-
-export async function createWithdrawal(userId: string, input: { accountId: string; amount: string; destination: string; description?: string; idempotencyKey: string }) {
-  const existing = await prisma.withdrawal.findUnique({ where: { idempotencyKey: input.idempotencyKey } });
-  if (existing) { if (existing.userId !== userId) throw new Error('Invalid idempotency key'); return { withdrawal: existing, replayed: true }; }
-  const amount = money(input.amount);
-  if (amount.lte(0)) throw new Error('Amount must be greater than zero');
-  const account = await prisma.account.findFirst({ where: { id: input.accountId, userId } });
-  if (!account) throw new Error('Account not found');
-  if (account.status !== 'active') throw new Error('Account is not active');
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { withdrawalBlocked: true, withdrawalBlockMessage: true } });
-  if (user?.withdrawalBlocked) throw new Error(user.withdrawalBlockMessage || 'Withdrawals are currently blocked on your account.');
-  const withdrawal = await prisma.withdrawal.create({ data: { accountId: account.id, userId, amount, currency: account.currency, destination: input.destination, reference: ref('WDR'), status: 'pending', description: input.description, idempotencyKey: input.idempotencyKey } });
-  await prisma.notification.create({ data: { userId, type: 'WITHDRAWAL_SUBMITTED', title: 'Withdrawal submitted', message: `Your $${amount.toFixed(2)} withdrawal request is pending approval.` } });
-  await logAudit({ actorId: userId, actorType: 'user', action: 'withdrawal.created', entityType: 'withdrawal', entityId: withdrawal.id });
-  return { withdrawal, replayed: false };
-}
-
-export async function approveWithdrawal(adminId: string, withdrawalId: string, reason?: string) {
-  const result = await serializableTransaction(async (tx) => {
-    const withdrawal = await tx.withdrawal.findUnique({ where: { id: withdrawalId } });
-    if (!withdrawal) throw new Error('Withdrawal not found');
-    if (withdrawal.status === 'completed') return withdrawal;
-    if (withdrawal.status !== 'pending') throw new Error('Withdrawal is no longer pending');
-    const account = await tx.account.findUnique({ where: { id: withdrawal.accountId } });
-    if (!account || account.status !== 'active') throw new Error('Account is not active');
-    const clearing = await tx.account.findFirst({ where: { accountType: 'CLEARING', currency: withdrawal.currency, status: 'active' } });
-    if (!clearing || clearing.id === account.id) throw new Error('Withdrawal clearing account is not configured');
-
-    await postJournal(tx, {
-      reference: withdrawal.reference,
-      currency: withdrawal.currency,
-      amount: withdrawal.amount,
-      debitAccountId: account.id,
-      creditAccountId: clearing.id,
-      movementType: 'WITHDRAWAL',
-      movementId: withdrawal.id,
-      debitTransaction: { accountId: account.id, userId: withdrawal.userId, description: withdrawal.description || 'Withdrawal' },
-      creditTransaction: { accountId: clearing.id, userId: clearing.userId, description: 'Withdrawal clearing' },
-      debitTxType: 'WITHDRAWAL',
-      creditTxType: 'CREDIT',
-    });
-    const updated = await tx.withdrawal.update({ where: { id: withdrawal.id }, data: { status: 'completed', reviewedAt: new Date(), reviewedBy: adminId } });
-    await tx.notification.create({ data: { userId: withdrawal.userId, type: 'WITHDRAWAL_APPROVED', title: 'Withdrawal approved', message: `Your $${withdrawal.amount.toFixed(2)} withdrawal was approved.` } });
-    return updated;
-  });
-  await logAudit({ actorId: adminId, actorType: 'admin', action: 'withdrawal.approve', entityType: 'withdrawal', entityId: withdrawalId, changes: reason ? { reason } : undefined });
-  return result;
-}
-
-export async function rejectWithdrawal(adminId: string, withdrawalId: string, reason?: string) {
-  const result = await serializableTransaction(async (tx) => {
-    const withdrawal = await tx.withdrawal.findUnique({ where: { id: withdrawalId } });
-    if (!withdrawal) throw new Error('Withdrawal not found');
-    if (withdrawal.status === 'rejected') return withdrawal;
-    if (withdrawal.status !== 'pending') throw new Error('Withdrawal is no longer pending');
-    const updated = await tx.withdrawal.update({ where: { id: withdrawalId }, data: { status: 'rejected', reviewedAt: new Date(), reviewedBy: adminId } });
-    await tx.notification.create({ data: { userId: withdrawal.userId, type: 'WITHDRAWAL_REJECTED', title: 'Withdrawal rejected', message: reason ? `Your withdrawal was rejected: ${reason}` : 'Your withdrawal request was rejected.' } });
-    return updated;
-  });
-  await logAudit({ actorId: adminId, actorType: 'admin', action: 'withdrawal.reject', entityType: 'withdrawal', entityId: withdrawalId, changes: reason ? { reason } : undefined });
-  return result;
-}
- + amount.toFixed(2) + ' ' + (input.direction === 'credit' ? 'to' : 'from') + ' your account. Reason: ' + input.reason.trim(),
+        message: 'Crestline Capital ' + (input.direction === 'credit' ? 'added ' : 'removed ') + amount.toFixed(2) + ' ' + (input.direction === 'credit' ? 'to' : 'from') + ' your account. Reason: ' + input.reason.trim(),
       },
     });
+
     return { reference, journalId: posted.journalId };
   });
-  await logAudit({ actorId: adminId, actorType: 'admin', action: 'customer.balance.' + input.direction, entityType: 'account', entityId: input.accountId, changes: { userId: input.userId, amount: input.amount, reason: input.reason.trim() } });
+
+  await logAudit({
+    actorId: adminId,
+    actorType: 'admin',
+    action: 'customer.balance.' + input.direction,
+    entityType: 'account',
+    entityId: input.accountId,
+    changes: { userId: input.userId, amount: input.amount, reason: input.reason.trim() },
+  });
   return result;
 }
 
