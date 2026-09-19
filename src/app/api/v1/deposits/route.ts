@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
   if (!user) return unauthorizedResponse();
   const v = validateBody(schema, await req.json());
   if (!v.success) return errorResponse('Validation failed', 400, v.errors);
-  try { return successResponse(await createDeposit(user.id, v.data), 201); }
+  const idempotencyKey = req.headers.get('idempotency-key') || crypto.randomUUID();
+  try { return successResponse(await createDeposit(user.id, { ...v.data, idempotencyKey }), 201); }
   catch (e) { return errorResponse(e instanceof Error ? e.message : 'Deposit failed', 400); }
 }
 
