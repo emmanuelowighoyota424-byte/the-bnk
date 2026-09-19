@@ -55,18 +55,11 @@ export async function POST(request: Request) {
 
     const email = v.data.email.trim().toLowerCase();
     const password = v.data.password;
-
     let admin = await prisma.adminUser.findUnique({ where: { email }, include: { role: true } });
 
-    // Production deployments may have migrations applied without ever running the seed.
-    // Provision the explicitly configured bootstrap administrator on first login instead
-    // of requiring a separate database-seeding operation. The password remains server-side
-    // in ADMIN_PASSWORD and is never returned, logged, or committed.
     if (!admin) {
       const provisioned = await ensureConfiguredAdmin(email);
-      if (provisioned) {
-        admin = await prisma.adminUser.findUnique({ where: { id: provisioned.id }, include: { role: true } });
-      }
+      if (provisioned) admin = await prisma.adminUser.findUnique({ where: { id: provisioned.id }, include: { role: true } });
     }
 
     if (!admin || admin.status !== 'active') return unauthorizedResponse('Invalid credentials');
@@ -76,8 +69,12 @@ export async function POST(request: Request) {
     await prisma.adminUser.update({ where: { id: admin.id }, data: { lastLoginAt: new Date() } });
     const accessToken = await signAccessToken({ sub: admin.id, email: admin.email, role: 'admin' });
     const refreshToken = await signRefreshToken({ sub: admin.id, email: admin.email, role: 'admin' });
-    setTokenCookie('access_token', accessToken, 15 * 60);
-    setTokenCookie('refresh_token', refreshToken, 7 * 24 * 60 * 60);
+
+    // Keep administrator authentication separate from the customer access cookie.
+    // This prevents a customer login/logout or token refresh from replacing an admin session.
+    setTokenCookie('admin_access_token', accessToken, 15 * 60);
+    setTokenCookie('admin_refresh_token', refreshToken, 7 * 24 * 60 * 60);
+
     await logAudit({ actorId: admin.id, actorType: 'admin', action: 'admin.login', entityType: 'admin_users', entityId: admin.id, ipAddress: ip });
 
     return successResponse({
