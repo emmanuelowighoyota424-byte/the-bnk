@@ -483,6 +483,7 @@ model Deposit {
   description   String?
   createdAt     DateTime @default(now()) @map("created_at")
   completedAt   DateTime?
+  idempotencyKey String?  @unique @map("idempotency_key")
   account       Account  @relation(fields: [accountId], references: [id])
   user          User     @relation(fields: [userId], references: [id])
   @@index([userId, createdAt])
@@ -503,6 +504,7 @@ model Withdrawal {
   createdAt     DateTime @default(now()) @map("created_at")
   reviewedAt    DateTime?
   reviewedBy    String?
+  idempotencyKey String?  @unique @map("idempotency_key")
   account       Account  @relation(fields: [accountId], references: [id])
   user          User     @relation(fields: [userId], references: [id])
   @@index([userId, status, createdAt])
