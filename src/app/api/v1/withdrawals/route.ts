@@ -4,12 +4,14 @@ import { createWithdrawal } from '@/lib/banking';
 import { errorResponse, successResponse, unauthorizedResponse, validateBody } from '@/lib/api-utils';
 import { getCurrentUser } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { verifyTransactionCode } from '@/lib/transaction-code';
 
 const schema = z.object({
   accountId: z.string().uuid(),
   amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
   destination: z.string().min(2).max(200),
   description: z.string().max(200).optional(),
+  verificationCode: z.string().regex(/^\d{6}$/),
 });
 
 export async function POST(req: NextRequest) {
@@ -18,7 +20,10 @@ export async function POST(req: NextRequest) {
   const v = validateBody(schema, await req.json());
   if (!v.success) return errorResponse('Validation failed', 400, v.errors);
   const idempotencyKey = req.headers.get('idempotency-key') || crypto.randomUUID();
-  try { return successResponse(await createWithdrawal(user.id, { ...v.data, idempotencyKey }), 201); }
+  try {
+    await verifyTransactionCode(user.id, 'WITHDRAWAL', v.data.verificationCode, { accountId: v.data.accountId, amount: v.data.amount, destination: v.data.destination, description: v.data.description || '' });
+    return successResponse(await createWithdrawal(user.id, { ...v.data, idempotencyKey }), 201);
+  }
   catch (e) { return errorResponse(e instanceof Error ? e.message : 'Withdrawal failed', 400); }
 }
 
