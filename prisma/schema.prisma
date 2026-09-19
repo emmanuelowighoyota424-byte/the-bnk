@@ -31,6 +31,10 @@ model User {
   totpSecret    String?  @map("totp_secret")
   totpEnabled   Boolean  @default(false) @map("totp_enabled")
   sms2faEnabled Boolean  @default(false) @map("sms_2fa_enabled")
+  transferBlocked Boolean @default(false) @map("transfer_blocked")
+  transferBlockMessage String? @map("transfer_block_message")
+  withdrawalBlocked Boolean @default(false) @map("withdrawal_blocked")
+  withdrawalBlockMessage String? @map("withdrawal_block_message")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
