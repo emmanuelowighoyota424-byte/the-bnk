@@ -203,7 +203,7 @@ export function SpendingAnalysisView() {
                       <Cell key={`cell-${index}`} fill={categoryColors[entry.category] || COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `$${parseFloat(value).toFixed(2)}`} />
+                  <Tooltip formatter={(value) => `${Number(value).toFixed(2)}`} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -226,7 +226,7 @@ export function SpendingAnalysisView() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="category" angle={-45} textAnchor="end" height={80} interval={0} />
                   <YAxis />
-                  <Tooltip formatter={(value) => `$${parseFloat(value).toFixed(2)}`} />
+                  <Tooltip formatter={(value) => `${Number(value).toFixed(2)}`} />
                   <Bar dataKey="amount" fill="#3b82f6" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -250,7 +250,7 @@ export function SpendingAnalysisView() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
-              <Tooltip formatter={(value) => `$${parseFloat(value).toFixed(2)}`} />
+              <Tooltip formatter={(value) => `${Number(value).toFixed(2)}`} />
               <Legend />
               <Line type="monotone" dataKey="spending" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", r: 5 }} />
             </LineChart>

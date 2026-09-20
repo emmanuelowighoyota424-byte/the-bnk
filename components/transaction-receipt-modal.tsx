@@ -483,7 +483,7 @@ IMPORTANT INFORMATION
   }
 
   const handleCopyReference = () => {
-    navigator.clipboard.writeText(transaction.reference)
+    navigator.clipboard.writeText(transaction.reference ?? "")
     setCopiedRef(true)
     toast({ title: "Reference Copied", description: `${transaction.reference} copied to clipboard.` })
     setTimeout(() => setCopiedRef(false), 2000)
