@@ -2,16 +2,15 @@
 const path = require('path');
 
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['bcryptjs', 'speakeasy', 'qrcode'],
-  },
+  serverExternalPackages: ['bcryptjs', 'speakeasy', 'qrcode'],
+  turbopack: {},
   typescript: {
     ignoreBuildErrors: false,
   },
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      '@': path.resolve(__dirname, 'src'),
+      '@': path.resolve(__dirname),
     };
     return config;
   },

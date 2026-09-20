@@ -1,0 +1,28 @@
+# FastAPI & Web
+fastapi==0.115.*
+uvicorn[standard]
+python-multipart
+pydantic-settings
+
+# ML & Audio
+torch
+torchaudio
+transformers
+soundfile
+webrtcvad
+numpy
+librosa
+resemblyzer
+
+# Database
+sqlalchemy
+alembic
+psycopg2-binary
+
+# Auth
+python-jose[cryptography]
+passlib[bcrypt]
+httpx
+
+# Optional: Redis for caching/pub-sub
+redis
