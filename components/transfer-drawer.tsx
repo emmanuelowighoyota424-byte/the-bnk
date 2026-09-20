@@ -383,7 +383,7 @@ export function TransferDrawer({ open, onOpenChange, onReceiptOpen }: TransferDr
                     <div className="flex flex-col items-start">
                       <span className="font-medium">{selectedBank.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {selectedBank.state} • Routing: {selectedBank.routingNumberNumber}
+                        {selectedBank.state} • Routing: {selectedBank.routingNumber}
                       </span>
                     </div>
                   ) : (
