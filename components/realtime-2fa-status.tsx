@@ -17,7 +17,7 @@ export function RealtimeTwoFAStatus() {
   const { profile, settings } = use2FA()
   const [devices, setDevices] = useState<DeviceInfo[]>([])
   const [lastSync, setLastSync] = useState<Date>(new Date())
-  const syncTimerRef = useRef<NodeJS.Timeout>()
+  const syncTimerRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   // Detect and track current device
   useEffect(() => {

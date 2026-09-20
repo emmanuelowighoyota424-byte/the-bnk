@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 export function useFinanceRealtime() {
 	const { subscribe } = useRealtime();
 	const [accounts, setAccounts] = useState([]);
-	const [transactions, setTransactions] = useState([]);
+		const [transactions, setTransactions] = useState<Array<{ transaction_type?: string }>>([]);
 	const [transfers, setTransfers] = useState([]);
 
 	useEffect(() => {
@@ -48,7 +48,7 @@ export function useFinanceRealtime() {
 
 export function useHRRealtime() {
 	const { subscribe } = useRealtime();
-	const [employees, setEmployees] = useState([]);
+		const [employees, setEmployees] = useState<Array<{ id?: string; first_name?: string; last_name?: string; job_title?: string }>>([]);
 	const [attendance, setAttendance] = useState([]);
 	const [payroll, setPayroll] = useState([]);
 
@@ -91,7 +91,7 @@ export function useHRRealtime() {
 
 export function useInventoryRealtime() {
 	const { subscribe } = useRealtime();
-	const [products, setProducts] = useState([]);
+		const [products, setProducts] = useState<Array<{ id?: string; product_name?: string; sku?: string }>>([]);
 	const [stock, setStock] = useState([]);
 	const [orders, setOrders] = useState([]);
 
@@ -134,7 +134,7 @@ export function useInventoryRealtime() {
 
 export function useSecurityRealtime() {
 	const { subscribe } = useRealtime();
-	const [auditLogs, setAuditLogs] = useState([]);
+		const [auditLogs, setAuditLogs] = useState<Array<{ action?: string; user_id?: string; timestamp: string }>>([]);
 	const [activeSessions, setActiveSessions] = useState([]);
 	const [users, setUsers] = useState([]);
 

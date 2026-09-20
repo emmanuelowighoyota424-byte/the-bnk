@@ -466,7 +466,6 @@ export function MoreView({ onLogout }: MoreViewProps) {
         const existingDevice = linkedDevices?.find((d) => d.browser === browser && d.os === os)
         if (!existingDevice && addDevice) {
           addDevice({
-            id: newDeviceId, // Assign a unique ID
             name: deviceName,
             type: deviceType,
             lastActive: new Date().toISOString(),
@@ -721,7 +720,6 @@ export function MoreView({ onLogout }: MoreViewProps) {
       return
     }
     addExternalRecipient({
-      id: `external_${Date.now()}`, // Added unique ID
       name: linkAccountForm.nickname || linkAccountForm.bankName,
       bankName: linkAccountForm.bankName,
       routingNumber: linkAccountForm.routingNumber,
@@ -3151,14 +3149,14 @@ export function MoreView({ onLogout }: MoreViewProps) {
                   <div className="space-y-3">
                     {[
                       {
-                        method: "sms",
+                        method: "sms" as const,
                         label: "Text Message (SMS)",
                         desc: `Send codes to ${safeUserProfile.phone}`,
                         icon: Phone,
                       },
-                      { method: "email", label: "Email", desc: `Send codes to ${safeUserProfile.email}`, icon: Mail },
+                      { method: "email" as const, label: "Email", desc: `Send codes to ${safeUserProfile.email}`, icon: Mail },
                       {
-                        method: "authenticator",
+                        method: "authenticator" as const,
                         label: "Authenticator App",
                         desc: "Use Google Authenticator or similar",
                         icon: QrCode,
