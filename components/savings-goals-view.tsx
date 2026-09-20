@@ -51,7 +51,7 @@ export function SavingsGoalsView() {
 
     if (editingId) {
       updateSavingsGoal(editingId, {
-        goalName,
+        name: goalName,
         targetAmount: parseFloat(goalAmount),
         currentAmount: parseFloat(currentAmount),
         category: goalCategory,
