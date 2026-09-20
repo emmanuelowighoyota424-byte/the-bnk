@@ -63,7 +63,7 @@ export function SavingsGoalsView() {
       })
     } else {
       addSavingsGoal({
-        goalName,
+        name: goalName,
         targetAmount: parseFloat(goalAmount),
         currentAmount: parseFloat(currentAmount),
         category: goalCategory,
