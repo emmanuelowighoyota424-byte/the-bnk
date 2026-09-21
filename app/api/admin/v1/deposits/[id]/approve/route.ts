@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/admin'
+import { requireAdminCapability } from '@/lib/auth/admin-rbac'
 import { FEATURE_FLAGS, requireFeature } from '@/lib/config/features'
 import { prisma } from '@/lib/prisma'
 export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const admin = await requireAdmin()
+  const admin = await requireAdminCapability('deposits')
   if (!admin) return NextResponse.json({ code: 'UNAUTHORIZED', error: 'Unauthorized' }, { status: 401 })
   try { requireFeature(FEATURE_FLAGS.deposits, 'deposits') } catch { return NextResponse.json({ code: 'FEATURE_DISABLED', error: 'Deposits are disabled pending regulatory clearance.' }, { status: 403 }) }
   const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || null
