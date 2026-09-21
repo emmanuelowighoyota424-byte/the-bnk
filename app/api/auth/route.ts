@@ -31,7 +31,7 @@ function serializeUser(user: { id: string; email: string; firstName: string; las
 
 function routingNumber() {
   const value = process.env.BNK_ROUTING_NUMBER?.trim()
-  return value && /^\\d{9}$/.test(value) ? value : '000000000'
+  return value && /^\d{9}$/.test(value) ? value : '000000000'
 }
 
 export async function POST(request: NextRequest) {
