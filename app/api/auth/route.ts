@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hashPassword, verifyPassword, validatePasswordStrength } from '@/lib/auth/password-utils'
-import { generateAndStoreOTP, verifyOTP } from '@/lib/auth/otp-service'
+import { verifyOTP } from '@/lib/auth/otp-service'
 import { verifyTOTP } from '@/lib/auth/totp-service'
 import bcrypt from 'bcryptjs'
 import { createSession } from '@/lib/auth/session'
