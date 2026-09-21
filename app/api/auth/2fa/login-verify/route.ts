@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyTOTP } from '@/lib/auth/totp-service'
+import { createSession } from '@/lib/auth/session'
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,6 +37,8 @@ export async function POST(request: NextRequest) {
       where: { userId: user.id },
       orderBy: { openedAt: 'asc' },
     })
+
+    await createSession(user.id, request)
 
     return NextResponse.json({
       success: true,
