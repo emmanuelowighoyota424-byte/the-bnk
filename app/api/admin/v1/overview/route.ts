@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/admin'
+import { requireAdminCapability } from '@/lib/auth/admin-rbac'
 import { prisma } from '@/lib/prisma'
 export async function GET() {
- const admin=await requireAdmin(); if(!admin) return NextResponse.json({error:'Unauthorized'},{status:401})
+ const admin=await requireAdminCapability('audit'); if(!admin) return NextResponse.json({error:'Unauthorized'},{status:401})
  const [users,accounts,txs,pendingDeposits,pendingWithdrawals,kyc] = await Promise.all([
   prisma.user.count(), prisma.account.count(), prisma.transaction.count(),
   prisma.deposit.count({where:{status:'pending'}}), prisma.withdrawal.count({where:{status:'pending'}}),
