@@ -2,10 +2,7 @@
 const path = require('path');
 
 const nextConfig = {
-  turbopack: {},
-  typescript: {
-    ignoreBuildErrors: false,
-  },
+  typescript: { ignoreBuildErrors: false },
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
