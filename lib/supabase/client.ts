@@ -1,15 +1,3 @@
-import { createBrowserClient } from '@supabase/ssr'
-
-export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
-}
-
-export function isSupabaseConfigured(): boolean {
-  return !!(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
-}
+/** @deprecated Supabase has been removed from BNK. */
+export function createClient(): never { throw new Error('Supabase has been removed; use Prisma') }
+export function isSupabaseConfigured(): boolean { return false }
