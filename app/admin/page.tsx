@@ -1,5 +1,58 @@
 'use client'
-import {useEffect,useState} from 'react'
-import {useRouter,useSearchParams} from 'next/navigation'
-const groups=[['People & Onboarding',[['','Overview'],['2','Users'],['10','KYC'],['11','Leads'],['12','Tasks'],['13','Referrals'],['14','Import']]],['Money Movement',[['0','Deposits'],['1','Withdrawals'],['15','Transfers'],['16','Payment Methods'],['17','Cards'],['18','Card Setup'],['19','Currencies'],['20','Loans'],['21','Grants'],['22','IRS'],['23','Membership']]],['Trading & Engagement',[['24','Plans'],['25','Crypto'],['26','Signals'],['27','Providers'],['28','Copy Trading'],['29','Courses'],['30','Inbox'],['31','Tickets'],['32','Live Chat'],['33','Broadcast'],['34','Contact'],['35','Agents'],['36','Testimonials']]],['Site & System',[['37','Appearance'],['38','Themes'],['39','Assets'],['40','Content'],['41','FAQ'],['42','Audit Log'],['43','Settings']]]];
-export default function Admin(){const params=useSearchParams(),router=useRouter(),id=params.get('id')||'',mod=groups.flatMap(g=>g[1]).find(x=>x[0]===id)||['','Overview'];const[session,setSession]=useState<any>();const[data,setData]=useState<any>();const[rows,setRows]=useState<any[]>([]);useEffect(()=>{fetch('/api/admin/v1/auth/session').then(async r=>{if(!r.ok){router.replace('/admin/login');return}setSession((await r.json()).admin)}).catch(()=>router.replace('/admin/login'))},[router]);useEffect(()=>{if(!session)return;const endpoint=id==='2'?'/api/admin/v1/users':id==='10'?'/api/admin/v1/kyc/queue':id==='0'?'/api/admin/v1/deposits':id==='1'?'/api/admin/v1/withdrawals':id==='42'?'/api/admin/v1/audit':'/api/admin/v1/overview';fetch(endpoint).then(r=>r.json()).then(d=>id?setRows(d.items||[]):setData(d.stats||{}))},[session,id]);if(!session)return <div className='min-h-screen bg-slate-950 text-white grid place-items-center'>Loading secure console…</div>;async function logout(){await fetch('/api/admin/v1/auth/logout',{method:'POST'});router.replace('/admin/login')}const cards=[['Users',data?.users],['Accounts',data?.accounts],['Transactions',data?.transactions],['Pending deposits',data?.pendingDeposits],['Pending withdrawals',data?.pendingWithdrawals],['Pending KYC',data?.pendingKyc],['Total balance',data?.totalBalance],['Available balance',data?.availableBalance]];return <div className='min-h-screen bg-slate-950 text-slate-100 flex'><aside className='hidden lg:block w-[280px] shrink-0 border-r border-white/10 p-4 sticky top-0 h-screen overflow-y-auto'><div className='px-3 py-4'><p className='text-cyan-400 text-xs font-bold tracking-[.25em]'>CRESTLINE</p><p className='text-lg font-semibold'>Admin Console</p></div>{groups.map(g=><section key={g[0]} className='mb-5'><p className='px-3 mb-2 text-[10px] uppercase tracking-widest text-slate-500'>{g[0]}</p>{g[1].map(m=><button key={m[0]} onClick={()=>router.push(m[0]?'/admin?id='+m[0]:'/admin')} className={'w-full text-left rounded-lg px-3 py-2 text-sm '+(m[0]===id?'bg-cyan-400/10 text-cyan-300':'text-slate-400 hover:bg-white/5 hover:text-white')}>{m[1]}</button>)}</section>)}</aside><main className='flex-1 min-w-0'><header className='h-16 border-b border-white/10 px-4 md:px-8 flex items-center justify-between sticky top-0 bg-slate-950/90 backdrop-blur z-10'><div><p className='text-xs text-slate-500'>Crestline Capital</p><h1 className='font-semibold'>{mod[1]}</h1></div><div className='flex items-center gap-3'><span className='hidden sm:block text-xs text-slate-400'>{session.displayName} · {session.role}</span><button onClick={logout} className='rounded-lg border border-white/10 px-3 py-2 text-xs'>Sign out</button></div></header><div className='p-4 md:p-8'>{!id?<div className='grid grid-cols-2 xl:grid-cols-4 gap-4'>{cards.map(c=><div key={c[0]} className='rounded-2xl border border-white/10 bg-white/[.03] p-5'><p className='text-xs text-slate-500'>{c[0]}</p><p className='mt-2 text-2xl font-semibold'>{c[1]??'—'}</p></div>)}</div>:<div className='rounded-2xl border border-white/10 overflow-hidden'>{rows.length?<div className='overflow-x-auto'><table className='w-full text-sm'><thead className='bg-white/[.03] text-left text-xs uppercase text-slate-500'><tr>{Object.keys(rows[0]).slice(0,7).map(k=><th key={k} className='px-4 py-3'>{k}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={r.id||i} className='border-t border-white/5'>{Object.entries(r).slice(0,7).map(([k,v])=><td key={k} className='px-4 py-3 max-w-xs truncate'>{typeof v==='object'&&v!==null?JSON.stringify(v):String(v??'—')}</td>)}</tr>)}</tbody></table></div>:<div className='p-10 text-center text-slate-500'>No records available for this module.</div>}</div>}</div></main></div>
+
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+
+const groups = [
+  ['People & Onboarding', [['', 'Overview'], ['2', 'Users'], ['10', 'KYC'], ['11', 'Leads'], ['12', 'Tasks'], ['13', 'Referrals'], ['14', 'Import']]],
+  ['Money Movement', [['0', 'Deposits'], ['1', 'Withdrawals'], ['15', 'Transfers'], ['16', 'Payment Methods'], ['17', 'Cards'], ['18', 'Card Setup'], ['19', 'Currencies'], ['20', 'Loans'], ['21', 'Grants'], ['22', 'IRS'], ['23', 'Membership']]],
+  ['Trading & Engagement', [['24', 'Plans'], ['25', 'Crypto'], ['26', 'Signals'], ['27', 'Providers'], ['28', 'Copy Trading'], ['29', 'Courses'], ['30', 'Inbox'], ['31', 'Tickets'], ['32', 'Live Chat'], ['33', 'Broadcast'], ['34', 'Contact'], ['35', 'Agents'], ['36', 'Testimonials']]],
+  ['Site & System', [['37', 'Appearance'], ['38', 'Themes'], ['39', 'Assets'], ['40', 'Content'], ['41', 'FAQ'], ['42', 'Audit Log'], ['43', 'Settings']]],
+] as const
+
+type Session = { displayName?: string; role?: string }
+
+export default function Admin() {
+  const params = useSearchParams()
+  const router = useRouter()
+  const id = params.get('id') || ''
+  const moduleEntry = groups.flatMap((group) => group[1]).find((item) => item[0] === id) ?? ['', 'Overview']
+  const [session, setSession] = useState<Session | null>(null)
+  const [data, setData] = useState<Record<string, unknown>>({})
+  const [rows, setRows] = useState<Record<string, unknown>[]>([])
+
+  useEffect(() => {
+    fetch('/api/admin/v1/auth/session')
+      .then(async (response) => {
+        if (!response.ok) { router.replace('/admin/login'); return }
+        setSession((await response.json()).admin ?? null)
+      })
+      .catch(() => router.replace('/admin/login'))
+  }, [router])
+
+  useEffect(() => {
+    if (!session) return
+    const endpoint = id === '2' ? '/api/admin/v1/users' : id === '10' ? '/api/admin/v1/kyc/queue' : id === '0' ? '/api/admin/v1/deposits' : id === '1' ? '/api/admin/v1/withdrawals' : id === '42' ? '/api/admin/v1/audit' : '/api/admin/v1/overview'
+    fetch(endpoint).then((response) => response.json()).then((payload) => id ? setRows(payload.items ?? []) : setData(payload.stats ?? {})).catch(() => undefined)
+  }, [session, id])
+
+  if (!session) return <div className='min-h-screen bg-slate-950 text-white grid place-items-center'>Loading secure console…</div>
+
+  async function logout() {
+    await fetch('/api/admin/v1/auth/logout', { method: 'POST' })
+    router.replace('/admin/login')
+  }
+
+  const cards = [['Users', data.users], ['Accounts', data.accounts], ['Transactions', data.transactions], ['Pending deposits', data.pendingDeposits], ['Pending withdrawals', data.pendingWithdrawals], ['Pending KYC', data.pendingKyc], ['Total balance', data.totalBalance], ['Available balance', data.availableBalance]]
+
+  return <div className='min-h-screen bg-slate-950 text-slate-100 flex'>
+    <aside className='hidden lg:block w-[280px] shrink-0 border-r border-white/10 p-4 sticky top-0 h-screen overflow-y-auto'>
+      <div className='px-3 py-4'><p className='text-cyan-400 text-xs font-bold tracking-[.25em]'>CRESTLINE</p><p className='text-lg font-semibold'>Admin Console</p></div>
+      {groups.map(([name, items]) => <section key={name} className='mb-5'><p className='px-3 mb-2 text-[10px] uppercase tracking-widest text-slate-500'>{name}</p>{items.map(([itemId, label]) => <button key={itemId} onClick={() => router.push(itemId ? `/admin?id=${itemId}` : '/admin')} className={`w-full text-left rounded-lg px-3 py-2 text-sm ${itemId === id ? 'bg-cyan-400/10 text-cyan-300' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>{label}</button>)}</section>)}
+    </aside>
+    <main className='flex-1 min-w-0'>
+      <header className='h-16 border-b border-white/10 px-4 md:px-8 flex items-center justify-between sticky top-0 bg-slate-950/90 backdrop-blur z-10'><div><p className='text-xs text-slate-500'>Crestline Capital</p><h1 className='font-semibold'>{moduleEntry[1]}</h1></div><div className='flex items-center gap-3'><span className='hidden sm:block text-xs text-slate-400'>{session.displayName} · {session.role}</span><button onClick={logout} className='rounded-lg border border-white/10 px-3 py-2 text-xs'>Sign out</button></div></header>
+      <div className='p-4 md:p-8'>{!id ? <div className='grid grid-cols-2 xl:grid-cols-4 gap-4'>{cards.map(([label, value]) => <div key={label} className='rounded-2xl border border-white/10 bg-white/[.03] p-5'><p className='text-xs text-slate-500'>{label}</p><p className='mt-2 text-2xl font-semibold'>{String(value ?? '—')}</p></div>)}</div> : <div className='rounded-2xl border border-white/10 overflow-hidden'>{rows.length ? <div className='overflow-x-auto'><table className='w-full text-sm'><thead className='bg-white/[.03] text-left text-xs uppercase text-slate-500'><tr>{Object.keys(rows[0]).slice(0, 7).map((key) => <th key={key} className='px-4 py-3'>{key}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={String(row.id ?? index)} className='border-t border-white/5'>{Object.entries(row).slice(0, 7).map(([key, value]) => <td key={key} className='px-4 py-3 max-w-xs truncate'>{typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value ?? '—')}</td>)}</tr>)}</tbody></table></div> : <div className='p-10 text-center text-slate-500'>No records available for this module.</div>}</div>}</div>
+    </main>
+  </div>
+}
