@@ -1,2 +1,25 @@
-import {NextResponse} from 'next/server';import {requireAdmin} from '@/lib/auth/admin';import {prisma} from '@/lib/prisma'
-export async function POST(_r:Request,{params}:{params:{id:string}}){const admin=await requireAdmin();if(!admin)return NextResponse.json({error:'Unauthorized'},{status:401});try{const result=await prisma.$transaction(async tx=>{const w=await tx.withdrawal.findUnique({where:{id:params.id}});if(!w||w.status!=='pending'&&w.status!=='held')throw new Error('INVALID');const a=await tx.account.findUnique({where:{id:w.accountId}});if(!a||Number(a.availableBalance)<Number(w.amount))throw new Error('FUNDS');const next=Number(a.balance)-Number(w.amount);await tx.account.update({where:{id:a.id},data:{balance:next,availableBalance:next}});const u=await tx.withdrawal.update({where:{id:w.id},data:{status:'approved',reviewedAt:new Date(),reviewedBy:admin.id}});await tx.transaction.create({data:{accountId:a.id,userId:w.userId,txType:'withdrawal',amount:w.amount,currency:w.currency,description:w.description||'Admin-approved withdrawal',status:'completed',runningBalance:next,referenceId:w.reference,settledAt:new Date()}});await tx.auditLog.create({data:{actorId:admin.id,actorType:'ADMIN',action:'WITHDRAWAL_APPROVED',entityType:'Withdrawal',entityId:w.id,changes:{before:{status:w.status},after:{status:'approved'}}}});return u});return NextResponse.json({withdrawal:result})}catch(e){return NextResponse.json({error:'Withdrawal approval failed'},{status:400})}}
+import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth/admin'
+import { FEATURE_FLAGS, requireFeature } from '@/lib/config/features'
+import { prisma } from '@/lib/prisma'
+
+export async function POST(_r: Request, { params }: { params: { id: string } }) {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try { requireFeature(FEATURE_FLAGS.withdrawals, 'withdrawals') } catch { return NextResponse.json({ code: 'FEATURE_DISABLED', error: 'Withdrawals are disabled pending regulatory clearance.' }, { status: 403 }) }
+  try {
+    const result = await prisma.$transaction(async tx => {
+      const w = await tx.withdrawal.findUnique({ where: { id: params.id } })
+      if (!w || (w.status !== 'pending' && w.status !== 'held')) throw new Error('INVALID_WITHDRAWAL')
+      const a = await tx.account.findUnique({ where: { id: w.accountId } })
+      if (!a || Number(a.availableBalance) < Number(w.amount)) throw new Error('FUNDS')
+      const next = Number(a.balance) - Number(w.amount)
+      await tx.account.update({ where: { id: a.id }, data: { balance: next, availableBalance: next } })
+      const updated = await tx.withdrawal.update({ where: { id: w.id }, data: { status: 'approved', reviewedAt: new Date(), reviewedBy: admin.id } })
+      await tx.transaction.create({ data: { accountId: a.id, userId: w.userId, txType: 'withdrawal', amount: w.amount, currency: w.currency, description: w.description || 'Admin-approved withdrawal', status: 'completed', runningBalance: next, referenceId: w.reference, settledAt: new Date() } })
+      await tx.auditLog.create({ data: { actorId: admin.id, actorType: 'ADMIN', action: 'WITHDRAWAL_APPROVED', entityType: 'Withdrawal', entityId: w.id, changes: { before: { status: w.status }, after: { status: 'approved' } } } })
+      return updated
+    })
+    return NextResponse.json({ withdrawal: result })
+  } catch { return NextResponse.json({ error: 'Withdrawal approval failed' }, { status: 400 }) }
+}
