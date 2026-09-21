@@ -1,83 +1,58 @@
-/**
- * Password utility functions for secure authentication
- * Uses bcrypt-like hashing (browser-safe implementation)
- */
+/** Password and one-time-code utilities for server-side authentication. */
 
-import crypto from 'crypto'
+import crypto from 'node:crypto'
 
-/**
- * Hash password with salt (Node.js server-side)
- */
+const PBKDF2_ITERATIONS = 210_000
+const KEY_LENGTH = 32
+const DIGEST = 'sha256'
+
 export async function hashPassword(password: string): Promise<string> {
-  const salt = crypto.randomBytes(16).toString('hex')
-  const hash = crypto
-    .pbkdf2Sync(password, salt, 1000, 32, 'sha256')
-    .toString('hex')
-  return `${salt}.${hash}`
+  const salt = crypto.randomBytes(16)
+  const hash = crypto.pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, KEY_LENGTH, DIGEST)
+  return `pbkdf2_sha256$${PBKDF2_ITERATIONS}$${salt.toString('hex')}$${hash.toString('hex')}`
 }
 
-/**
- * Verify password against hash
- */
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const [salt, storedHash] = hash.split('.')
-  const hash2 = crypto
-    .pbkdf2Sync(password, salt, 1000, 32, 'sha256')
-    .toString('hex')
-  return hash2 === storedHash
+export async function verifyPassword(password: string, encoded: string): Promise<boolean> {
+  try {
+    const parts = encoded.split('$')
+    if (parts.length === 4 && parts[0] === 'pbkdf2_sha256') {
+      const iterations = Number(parts[1])
+      const salt = Buffer.from(parts[2], 'hex')
+      const expected = Buffer.from(parts[3], 'hex')
+      const actual = crypto.pbkdf2Sync(password, salt, iterations, expected.length, DIGEST)
+      return expected.length === actual.length && crypto.timingSafeEqual(expected, actual)
+    }
+
+    // Backward-compatible verification for existing BNK password records.
+    const [salt, storedHash] = encoded.split('.')
+    if (!salt || !storedHash) return false
+    const actual = crypto.pbkdf2Sync(password, salt, 1000, 32, DIGEST).toString('hex')
+    return crypto.timingSafeEqual(Buffer.from(storedHash, 'hex'), Buffer.from(actual, 'hex'))
+  } catch {
+    return false
+  }
 }
 
-/**
- * Validate password strength
- */
-export function validatePasswordStrength(password: string): {
-  isStrong: boolean
-  errors: string[]
-} {
+export function validatePasswordStrength(password: string): { isStrong: boolean; errors: string[] } {
   const errors: string[] = []
-
-  if (password.length < 8) {
-    errors.push('Password must be at least 8 characters long')
-  }
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter')
-  }
-  if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter')
-  }
-  if (!/[0-9]/.test(password)) {
-    errors.push('Password must contain at least one number')
-  }
-  if (!/[^A-Za-z0-9]/.test(password)) {
-    errors.push('Password must contain at least one special character')
-  }
-
-  return {
-    isStrong: errors.length === 0,
-    errors,
-  }
+  if (password.length < 8) errors.push('Password must be at least 8 characters long')
+  if (!/[A-Z]/.test(password)) errors.push('Password must contain at least one uppercase letter')
+  if (!/[a-z]/.test(password)) errors.push('Password must contain at least one lowercase letter')
+  if (!/[0-9]/.test(password)) errors.push('Password must contain at least one number')
+  if (!/[^A-Za-z0-9]/.test(password)) errors.push('Password must contain at least one special character')
+  return { isStrong: errors.length === 0, errors }
 }
 
-/**
- * Generate random OTP
- */
-export function generateOTP(length: number = 6): string {
-  const digits = '0123456789'
-  let otp = ''
-  for (let i = 0; i < length; i++) {
-    otp += digits[Math.floor(Math.random() * 10)]
-  }
-  return otp
+export function generateOTP(length = 6): string {
+  if (!Number.isInteger(length) || length < 4 || length > 10) throw new Error('Invalid OTP length')
+  let result = ''
+  for (let i = 0; i < length; i++) result += crypto.randomInt(0, 10).toString()
+  return result
 }
 
-/**
- * Generate 2FA backup codes
- */
-export function generateBackupCodes(count: number = 10): string[] {
-  const codes: string[] = []
-  for (let i = 0; i < count; i++) {
+export function generateBackupCodes(count = 10): string[] {
+  return Array.from({ length: count }, () => {
     const code = crypto.randomBytes(4).toString('hex').toUpperCase()
-    codes.push(`${code.slice(0, 4)}-${code.slice(4, 8)}`)
-  }
-  return codes
+    return `${code.slice(0, 4)}-${code.slice(4)}`
+  })
 }
