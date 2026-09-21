@@ -2,7 +2,6 @@
 const path = require('path');
 
 const nextConfig = {
-  serverExternalPackages: ['bcryptjs', 'speakeasy', 'qrcode'],
   turbopack: {},
   typescript: {
     ignoreBuildErrors: false,
