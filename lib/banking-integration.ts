@@ -1,44 +1,31 @@
 /**
  * Banking Integration Service
- * Central hub for all banking APIs and real-time data synchronization
+ * Client-side coordinator for the application's own banking APIs.
+ * Authentication and authorization are enforced by the API routes; this
+ * client deliberately does not depend on Supabase or trust caller-supplied IDs.
  */
 
-import { createClient } from './supabase/client'
-
 export class BankingIntegrationService {
-  private supabase = createClient()
   private userId: string | null = null
-  private syncInterval: NodeJS.Timeout | null = null
+  private syncInterval: ReturnType<typeof setInterval> | null = null
 
   constructor(userId: string | null = null) {
     this.userId = userId
   }
 
-  /**
-   * Initialize banking integration and start real-time sync
-   */
   async initialize(userId: string) {
     this.userId = userId
-    console.log('[v0] Banking integration initialized for user:', userId)
     this.startRealTimeSync()
+    await this.syncAllData()
   }
 
-  /**
-   * Start real-time sync of banking data (every 30 seconds)
-   */
   private startRealTimeSync() {
     if (this.syncInterval) clearInterval(this.syncInterval)
-
-    this.syncInterval = setInterval(async () => {
-      if (this.userId) {
-        await this.syncAllData()
-      }
-    }, 30000) // Sync every 30 seconds
+    this.syncInterval = setInterval(() => {
+      void this.syncAllData()
+    }, 30000)
   }
 
-  /**
-   * Sync all banking data
-   */
   async syncAllData() {
     if (!this.userId) return
 
@@ -49,72 +36,60 @@ export class BankingIntegrationService {
         this.fetchNotifications(),
       ])
 
-      // Broadcast update event
-      const event = new CustomEvent('banking-sync', {
-        detail: { accounts, transactions, notifications }
-      })
-      window.dispatchEvent(event)
-
-      console.log('[v0] Banking data synced')
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('banking-sync', {
+          detail: { accounts, transactions, notifications },
+        }))
+      }
     } catch (error) {
-      console.error('[v0] Sync error:', error)
+      console.error('[Banking Integration] Sync error:', error)
     }
   }
 
-  /**
-   * Fetch all accounts with balances
-   */
+  private async request(path: string, init?: RequestInit) {
+    const response = await fetch(path, {
+      ...init,
+      credentials: 'include',
+      headers: {
+        ...(init?.headers ?? {}),
+        'Content-Type': 'application/json',
+      },
+    })
+
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(data?.error || `Request failed with status ${response.status}`)
+    }
+    return data
+  }
+
   async fetchAccounts() {
     try {
-      const response = await fetch('/api/accounts', {
-        headers: {
-          'x-user-id': this.userId || ''
-        }
-      })
-      return await response.json()
+      return await this.request('/api/accounts')
     } catch (error) {
-      console.error('[v0] Fetch accounts error:', error)
+      console.error('[Banking Integration] Fetch accounts error:', error)
       return { accounts: [] }
     }
   }
 
-  /**
-   * Fetch transactions
-   */
   async fetchTransactions(days = 30) {
     try {
-      const response = await fetch(`/api/transactions?days=${days}`, {
-        headers: {
-          'x-user-id': this.userId || ''
-        }
-      })
-      return await response.json()
+      return await this.request(`/api/transactions?days=${encodeURIComponent(days)}`)
     } catch (error) {
-      console.error('[v0] Fetch transactions error:', error)
+      console.error('[Banking Integration] Fetch transactions error:', error)
       return { transactions: [] }
     }
   }
 
-  /**
-   * Fetch notifications
-   */
   async fetchNotifications() {
     try {
-      const response = await fetch('/api/notifications', {
-        headers: {
-          'x-user-id': this.userId || ''
-        }
-      })
-      return await response.json()
+      return await this.request('/api/notifications')
     } catch (error) {
-      console.error('[v0] Fetch notifications error:', error)
+      console.error('[Banking Integration] Fetch notifications error:', error)
       return { notifications: [] }
     }
   }
 
-  /**
-   * Create transfer (wire, Zelle, ACH, internal, bill pay)
-   */
   async createTransfer(transferData: {
     action: 'wire' | 'zelle' | 'ach' | 'internal' | 'bill_pay'
     fromAccountId: string
@@ -132,45 +107,23 @@ export class BankingIntegrationService {
     billPayee?: string
     billDueDate?: string
   }) {
-    try {
-      const response = await fetch('/api/transfers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': this.userId || ''
-        },
-        body: JSON.stringify(transferData)
-      })
-      return await response.json()
-    } catch (error) {
-      console.error('[v0] Transfer error:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Send Zelle transfer
-   */
-  async sendZelle(fromAccountId: string, amount: number, recipientEmail: string, recipientName: string) {
-    return this.createTransfer({
-      action: 'zelle',
-      fromAccountId,
-      amount,
-      recipientEmail,
-      recipientName
+    return this.request('/api/transfers', {
+      method: 'POST',
+      body: JSON.stringify(transferData),
     })
   }
 
-  /**
-   * Create wire transfer
-   */
+  async sendZelle(fromAccountId: string, amount: number, recipientEmail: string, recipientName: string) {
+    return this.createTransfer({ action: 'zelle', fromAccountId, amount, recipientEmail, recipientName })
+  }
+
   async sendWire(
     fromAccountId: string,
     amount: number,
     recipientName: string,
     recipientBank: string,
     recipientRoutingNumber: string,
-    recipientAccountNumber: string
+    recipientAccountNumber: string,
   ) {
     return this.createTransfer({
       action: 'wire',
@@ -179,30 +132,19 @@ export class BankingIntegrationService {
       recipientName,
       recipientBank,
       recipientRoutingNumber,
-      recipientAccountNumber
+      recipientAccountNumber,
     })
   }
 
-  /**
-   * Get bills for user
-   */
   async getBills() {
     try {
-      const response = await fetch('/api/bill-pay', {
-        headers: {
-          'x-user-id': this.userId || ''
-        }
-      })
-      return await response.json()
+      return await this.request('/api/bill-pay')
     } catch (error) {
-      console.error('[v0] Fetch bills error:', error)
+      console.error('[Banking Integration] Fetch bills error:', error)
       return { bills: [] }
     }
   }
 
-  /**
-   * Add bill
-   */
   async addBill(billData: {
     accountId: string
     payee: string
@@ -212,115 +154,56 @@ export class BankingIntegrationService {
     frequency: string
     accountNumber?: string
   }) {
-    try {
-      const response = await fetch('/api/bill-pay', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': this.userId || ''
-        },
-        body: JSON.stringify(billData)
-      })
-      return await response.json()
-    } catch (error) {
-      console.error('[v0] Add bill error:', error)
-      throw error
-    }
+    return this.request('/api/bill-pay', {
+      method: 'POST',
+      body: JSON.stringify(billData),
+    })
   }
 
-  /**
-   * Get credit information
-   */
   async getCreditInfo() {
     try {
-      const response = await fetch('/api/credit', {
-        headers: {
-          'x-user-id': this.userId || ''
-        }
-      })
-      return await response.json()
+      return await this.request('/api/credit')
     } catch (error) {
-      console.error('[v0] Fetch credit error:', error)
+      console.error('[Banking Integration] Fetch credit error:', error)
       return {}
     }
   }
 
-  /**
-   * Get user settings
-   */
   async getSettings() {
     try {
-      const response = await fetch('/api/settings', {
-        headers: {
-          'x-user-id': this.userId || ''
-        }
-      })
-      return await response.json()
+      return await this.request('/api/settings')
     } catch (error) {
-      console.error('[v0] Fetch settings error:', error)
+      console.error('[Banking Integration] Fetch settings error:', error)
       return {}
     }
   }
 
-  /**
-   * Update settings
-   */
-  async updateSettings(settings: any) {
-    try {
-      const response = await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': this.userId || ''
-        },
-        body: JSON.stringify(settings)
-      })
-      return await response.json()
-    } catch (error) {
-      console.error('[v0] Update settings error:', error)
-      throw error
-    }
+  async updateSettings(settings: unknown) {
+    return this.request('/api/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(settings),
+    })
   }
 
-  /**
-   * Mark notification as read
-   */
   async markNotificationAsRead(notificationId: string) {
-    try {
-      const response = await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': this.userId || ''
-        },
-        body: JSON.stringify({ notificationId })
-      })
-      return await response.json()
-    } catch (error) {
-      console.error('[v0] Mark notification error:', error)
-      throw error
-    }
+    return this.request('/api/notifications', {
+      method: 'PATCH',
+      body: JSON.stringify({ notificationId }),
+    })
   }
 
-  /**
-   * Cleanup and stop syncing
-   */
   destroy() {
     if (this.syncInterval) {
       clearInterval(this.syncInterval)
       this.syncInterval = null
     }
     this.userId = null
-    console.log('[v0] Banking integration destroyed')
   }
 }
 
-// Singleton instance
 let instance: BankingIntegrationService | null = null
 
 export function getBankingIntegration() {
-  if (!instance) {
-    instance = new BankingIntegrationService()
-  }
+  if (!instance) instance = new BankingIntegrationService()
   return instance
 }
