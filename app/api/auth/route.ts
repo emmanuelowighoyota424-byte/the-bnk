@@ -51,9 +51,17 @@ export async function POST(request: NextRequest) {
       const user = await prisma.user.findUnique({ where: { email } })
       if (!user || user.status !== 'active' || !(await verifyPasswordCompatible(password, user.passwordHash))) return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
       if (user.totpEnabled && user.totpSecret) return NextResponse.json({ message: 'TOTP verification required', userId: user.id, userName: `${user.firstName} ${user.lastName}`.trim(), userEmail: user.email, requiresTOTP: true, requiresOTP: false })
-      const otpCode = await generateAndStoreOTP(user.id)
-      if (process.env.NODE_ENV !== 'production') console.log(`[BNK] Development login OTP for ${email}: ${otpCode}`)
-      return NextResponse.json({ message: 'OTP sent', userId: user.id, userName: `${user.firstName} ${user.lastName}`.trim(), userEmail: user.email, requiresOTP: true, requiresTOTP: false })
+      await createSession(user.id, request)
+      const accounts = await prisma.account.findMany({ where: { userId: user.id }, orderBy: { openedAt: 'asc' } })
+      return NextResponse.json({
+        message: 'Authentication successful',
+        userId: user.id,
+        authenticated: true,
+        user: serializeUser(user),
+        accounts,
+        requiresOTP: false,
+        requiresTOTP: false,
+      })
     }
 
     if (action === 'verify-otp') {
