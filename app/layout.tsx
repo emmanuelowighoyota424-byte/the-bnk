@@ -13,12 +13,12 @@ export const viewport: Viewport = {
   minimumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0a4fa6",
+  themeColor: "#10233f",
 }
 
 export const metadata: Metadata = {
-  title: "Enterprise Financial System",
-  description: "Integrated financial management with real-time updates",
+  title: "Crestline Capital | Clarity for your capital",
+  description: "Secure banking and thoughtful financial tools from Crestline Capital.",
   generator: "v0.app",
   icons: {
     icon: [
