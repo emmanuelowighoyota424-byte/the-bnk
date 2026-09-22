@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
       for (let attempt = 0; attempt < 5; attempt++) {
         try {
-          const result = await prisma.$transaction(async tx => {
+          const result = await prisma.$transaction(async (tx: any) => {
             const user = await tx.user.create({
               data: {
                 email,

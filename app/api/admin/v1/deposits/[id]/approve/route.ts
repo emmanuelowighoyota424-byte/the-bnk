@@ -2,15 +2,16 @@ import { NextResponse } from 'next/server'
 import { requireAdminCapability } from '@/lib/auth/admin-rbac'
 import { FEATURE_FLAGS, requireFeature } from '@/lib/config/features'
 import { prisma } from '@/lib/prisma'
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const admin = await requireAdminCapability('deposits')
   if (!admin) return NextResponse.json({ code: 'UNAUTHORIZED', error: 'Unauthorized' }, { status: 401 })
   try { requireFeature(FEATURE_FLAGS.deposits, 'deposits') } catch { return NextResponse.json({ code: 'FEATURE_DISABLED', error: 'Deposits are disabled pending regulatory clearance.' }, { status: 403 }) }
   const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || null
   const userAgent = request.headers.get('user-agent')
   try {
-    const result = await prisma.$transaction(async tx => {
-      const d = await tx.deposit.findUnique({ where: { id: params.id } })
+    const result = await prisma.$transaction(async (tx: any) => {
+      const d = await tx.deposit.findUnique({ where: { id } })
       if (!d || d.status !== 'pending') throw new Error('INVALID_DEPOSIT')
       await tx.$queryRawUnsafe('SELECT id FROM accounts WHERE id = $1 FOR UPDATE', d.accountId)
       const a = await tx.account.findUnique({ where: { id: d.accountId } })

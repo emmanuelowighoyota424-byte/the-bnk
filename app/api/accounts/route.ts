@@ -13,7 +13,7 @@ export async function GET() {
     })
     return NextResponse.json({
       accounts,
-      totalBalance: accounts.reduce((sum, account) => sum + Number(account.balance), 0),
+      totalBalance: accounts.reduce((sum: number, account: { balance: unknown }) => sum + Number(account.balance), 0),
       count: accounts.length,
       lastSync: new Date().toISOString(),
     })

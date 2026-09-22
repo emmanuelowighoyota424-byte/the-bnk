@@ -27,12 +27,12 @@ export async function GET(request: NextRequest) {
 
     // Calculate total due this month
     const today = new Date()
-    const thisMonth = bills?.filter(b => {
+    const thisMonth = bills?.filter((b: any) => {
       const dueDate = new Date(b.due_date)
       return dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear()
     }) || []
 
-    const totalDue = thisMonth.reduce((sum, b) => sum + b.amount, 0)
+    const totalDue = thisMonth.reduce((sum: number, b: any) => sum + b.amount, 0)
 
     return NextResponse.json({
       bills: bills || [],

@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
               table: 'security_events',
               filter: `user_id=eq.${userId}`,
             },
-            (payload) => {
+            (payload: any) => {
               console.log('[v0] Security alert received:', payload)
 
               const event = payload.new
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
               table: 'sessions',
               filter: `user_id=eq.${userId}`,
             },
-            (payload) => {
+            (payload: any) => {
               console.log('[v0] New session detected:', payload)
 
               const session = payload.new
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
               table: 'sessions',
               filter: `user_id=eq.${userId}`,
             },
-            (payload) => {
+            (payload: any) => {
               if (payload.new?.terminated_at) {
                 console.log('[v0] Session terminated:', payload)
 
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
               }
             }
           )
-          .subscribe((status) => {
+          .subscribe((status: any) => {
             console.log('[v0] Security subscription status:', status)
           })
       } else {
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
               table: 'transaction_alerts',
               filter: `user_id=eq.${userId}`,
             },
-            (payload) => {
+            (payload: any) => {
               console.log('[v0] Alert update received:', payload)
 
               const alert = payload.new
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
               table: 'transaction_alerts',
               filter: `user_id=eq.${userId}`,
             },
-            (payload) => {
+            (payload: any) => {
               console.log('[v0] Alert status updated:', payload)
 
               const alert = payload.new
@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
               )
             }
           )
-          .subscribe((status) => {
+          .subscribe((status: any) => {
             console.log('[v0] Subscription status:', status)
           })
       }

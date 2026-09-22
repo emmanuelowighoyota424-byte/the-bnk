@@ -41,12 +41,12 @@ export async function GET(request: NextRequest) {
     const spending = spendingResult.data || []
 
     // Calculate totals
-    const totalBalance = accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0)
-    const unreadNotifications = notifications.filter(n => !n.is_read).length
+    const totalBalance = accounts.reduce((sum: number, acc: any) => sum + (acc.balance || 0), 0)
+    const unreadNotifications = notifications.filter((n: any) => !n.is_read).length
 
     // Calculate spending by category
     const spendingByCategory: Record<string, number> = {}
-    spending.forEach(tx => {
+    spending.forEach((tx: any) => {
       if (tx.category) {
         spendingByCategory[tx.category] = (spendingByCategory[tx.category] || 0) + tx.amount
       }
@@ -54,18 +54,18 @@ export async function GET(request: NextRequest) {
 
     // Get upcoming bills this month
     const today = new Date()
-    const thisMonth = bills.filter(b => {
+    const thisMonth = bills.filter((b: any) => {
       const dueDate = new Date(b.due_date)
       return dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear()
     })
 
-    const totalDueThisMonth = thisMonth.reduce((sum, b) => sum + b.amount, 0)
+    const totalDueThisMonth = thisMonth.reduce((sum: number, b: any) => sum + b.amount, 0)
 
     // Get recent transactions
     const recentTransactions = transactions.slice(0, 5)
 
     // Get quick stats
-    const statsLastMonth = transactions.filter(tx => {
+    const statsLastMonth = transactions.filter((tx: any) => {
       const txDate = new Date(tx.created_at)
       const lastMonth = new Date()
       lastMonth.setMonth(lastMonth.getMonth() - 1)
@@ -73,18 +73,18 @@ export async function GET(request: NextRequest) {
     })
 
     const lastMonthSpending = statsLastMonth
-      .filter(tx => tx.type === 'debit' || tx.type === 'withdrawal')
-      .reduce((sum, tx) => sum + tx.amount, 0)
+      .filter((tx: any) => tx.type === 'debit' || tx.type === 'withdrawal')
+      .reduce((sum: number, tx: any) => sum + tx.amount, 0)
 
     const lastMonthDeposits = statsLastMonth
-      .filter(tx => tx.type === 'credit' || tx.type === 'deposit')
-      .reduce((sum, tx) => sum + tx.amount, 0)
+      .filter((tx: any) => tx.type === 'credit' || tx.type === 'deposit')
+      .reduce((sum: number, tx: any) => sum + tx.amount, 0)
 
     return NextResponse.json({
       // Account Overview
       accounts: {
         total: accounts.length,
-        list: accounts.map(acc => ({
+        list: accounts.map((acc: any) => ({
           id: acc.id,
           name: acc.name,
           type: acc.account_type,

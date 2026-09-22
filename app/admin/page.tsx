@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-const groups = [
+const groups: Array<[string, Array<[string, string]>]> = [
   ['People & Onboarding', [['', 'Overview'], ['2', 'Users'], ['10', 'KYC'], ['11', 'Leads'], ['12', 'Tasks'], ['13', 'Referrals'], ['14', 'Import']]],
   ['Money Movement', [['0', 'Deposits'], ['1', 'Withdrawals'], ['15', 'Transfers'], ['16', 'Payment Methods'], ['17', 'Cards'], ['18', 'Card Setup'], ['19', 'Currencies'], ['20', 'Loans'], ['21', 'Grants'], ['22', 'IRS'], ['23', 'Membership']]],
   ['Trading & Engagement', [['24', 'Plans'], ['25', 'Crypto'], ['26', 'Signals'], ['27', 'Providers'], ['28', 'Copy Trading'], ['29', 'Courses'], ['30', 'Inbox'], ['31', 'Tickets'], ['32', 'Live Chat'], ['33', 'Broadcast'], ['34', 'Contact'], ['35', 'Agents'], ['36', 'Testimonials']]],
@@ -43,7 +43,7 @@ export default function Admin() {
     router.replace('/admin/login')
   }
 
-  const cards = [['Users', data.users], ['Accounts', data.accounts], ['Transactions', data.transactions], ['Pending deposits', data.pendingDeposits], ['Pending withdrawals', data.pendingWithdrawals], ['Pending KYC', data.pendingKyc], ['Total balance', data.totalBalance], ['Available balance', data.availableBalance]]
+  const cards: Array<[string, unknown]> = [['Users', data.users], ['Accounts', data.accounts], ['Transactions', data.transactions], ['Pending deposits', data.pendingDeposits], ['Pending withdrawals', data.pendingWithdrawals], ['Pending KYC', data.pendingKyc], ['Total balance', data.totalBalance], ['Available balance', data.availableBalance]]
 
   return <div className='min-h-screen bg-slate-950 text-slate-100 flex'>
     <aside className='hidden lg:block w-[280px] shrink-0 border-r border-white/10 p-4 sticky top-0 h-screen overflow-y-auto'>
