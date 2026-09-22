@@ -10,7 +10,7 @@ export interface OperationResult {
   success: boolean
   data?: any
   error?: string
-  timestamp: Date
+  timestamp?: Date
 }
 
 export interface OperationConfig {

@@ -60,7 +60,6 @@ export function WireTransferTracker({
     if (status === 'pending' || status === 'processing') {
       const progressInterval = setInterval(() => {
         setProgressPercent((prev) => {
-          if (status === 'completed') return 100
           if (prev >= 95) {
             setStatus('completed')
             setProgressPercent(100)
@@ -90,7 +89,7 @@ export function WireTransferTracker({
 
     let messageIndex = 0
     const messageInterval = setInterval(() => {
-      const currentMessages = messages[status]
+      const currentMessages = status === 'failed' ? messages.pending : messages[status]
       setStatusMessage(currentMessages[messageIndex % currentMessages.length])
       messageIndex++
     }, 3000)

@@ -308,10 +308,10 @@ export function RealTimeMonitorDashboard() {
 										className="flex justify-between items-center p-2 bg-muted rounded"
 									>
 										<span className="text-sm font-medium">
-											{log.action || 'Action'} by {log.user_id || 'System'}
+											{String(log.action || 'Action')} by {String(log.user_id || 'System')}
 										</span>
 										<Badge variant="outline">
-											{new Date(log.timestamp).toLocaleTimeString()}
+											{new Date(String(log.timestamp)).toLocaleTimeString()}
 										</Badge>
 									</div>
 								))}
