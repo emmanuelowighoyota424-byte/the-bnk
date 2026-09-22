@@ -1,21 +1,16 @@
-import { deleteTokenCookie, revokeAllUserSessions, getCurrentUser } from '@/lib/auth';
+import { deleteTokenCookie, getTokenFromCookie, verifyAccessToken, revokeSession, logAudit } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-utils';
 
 export async function POST() {
   try {
-    const user = await getCurrentUser();
-    if (user) await revokeAllUserSessions(user.id);
-
-    // Clear both session namespaces so the shared logout control works safely
-    // whether it is used from the customer application or admin console.
+    const token = getTokenFromCookie('access_token');
+    const payload = token ? await verifyAccessToken(token) : null;
+    if (payload?.sid && payload.sub) {
+      await revokeSession(payload.sid);
+      await logAudit({ actorId: payload.sub, actorType: 'user', action: 'LOGOUT', entityType: 'user_sessions', entityId: payload.sid });
+    }
     deleteTokenCookie('access_token');
     deleteTokenCookie('refresh_token');
-    deleteTokenCookie('admin_access_token');
-    deleteTokenCookie('admin_refresh_token');
-
     return successResponse({ loggedOut: true });
-  } catch (e) {
-    console.error(e);
-    return errorResponse('Internal server error', 500);
-  }
+  } catch (e) { console.error(e); return errorResponse('Internal server error', 500); }
 }
