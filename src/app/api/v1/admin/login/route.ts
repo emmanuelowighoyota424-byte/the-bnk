@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { signAccessToken, signRefreshToken, setTokenCookie, logAudit, checkRateLimit } from '@/lib/auth';
+import { signAccessToken, setTokenCookie, logAudit, checkRateLimit } from '@/lib/auth';
 import { successResponse, errorResponse, validateBody, unauthorizedResponse } from '@/lib/api-utils';
 import { randomBytes, createHash } from 'node:crypto';
 
