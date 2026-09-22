@@ -81,7 +81,9 @@ export async function getCurrentAdmin() {
   const token = getTokenFromCookie('admin_access_token');
   if (!token) return null;
   const payload = await verifyAccessToken(token);
-  if (!payload?.sub || payload.role !== 'admin') return null;
+  if (!payload?.sub || payload.role !== 'admin' || !payload.sid) return null;
+  const adminSession = await prisma.adminSession.findFirst({ where: { id: payload.sid, adminId: payload.sub, revokedAt: null, expiresAt: { gt: new Date() } }, select: { id: true } });
+  if (!adminSession) return null;
   const admin = await prisma.adminUser.findUnique({ where: { id: payload.sub }, include: { role: true } });
   return admin && admin.status === 'active' ? admin : null;
 }
