@@ -47,6 +47,7 @@ export async function createAuthenticatedSession(userId: string, email: string, 
       userId, refreshTokenHash: hashToken(refreshToken), ipAddress,
       deviceInfo: deviceInfo ? { userAgent: deviceInfo } : undefined,
       expiresAt: new Date(Date.now() + ABSOLUTE_MS),
+      lastActivityAt: new Date(),
     },
     select: { id: true },
   });
@@ -68,8 +69,9 @@ export async function getCurrentUser() {
   const payload = await verifyAccessToken(token);
   if (!payload?.sub || payload.role === 'admin') return null;
   if (payload.sid) {
-    const session = await prisma.userSession.findFirst({ where: { id: payload.sid, userId: payload.sub, revokedAt: null, expiresAt: { gt: new Date() } }, select: { id: true, createdAt: true } });
-    if (!session || Date.now() - session.createdAt.getTime() > ABSOLUTE_MS) return null;
+    const session = await prisma.userSession.findFirst({ where: { id: payload.sid, userId: payload.sub, revokedAt: null, expiresAt: { gt: new Date() } }, select: { id: true, createdAt: true, lastActivityAt: true } });
+    if (!session || Date.now() - session.createdAt.getTime() > ABSOLUTE_MS || Date.now() - session.lastActivityAt.getTime() > IDLE_MS) return null;
+    await prisma.userSession.update({ where: { id: session.id }, data: { lastActivityAt: new Date() } });
   }
   const user = await prisma.user.findUnique({ where: { id: payload.sub }, select: { id: true, email: true, status: true, firstName: true, lastName: true, bnkTag: true, kycStatus: true, kycTier: true } });
   return user && user.status === 'active' ? user : null;
