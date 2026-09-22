@@ -1,326 +1,181 @@
-/**
- * Auth Route Handler - Secure login/signup with password hashing & OTP
- * New users get auto-generated account numbers and zero-balance accounts
- */
+/** Customer registration and login backed by PostgreSQL/Prisma. */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
-import { hashPassword, verifyPassword } from '@/lib/auth/password-utils'
-import { generateAndStoreOTP, verifyOTP } from '@/lib/auth/otp-service'
+import { prisma } from '@/lib/prisma'
+import { hashPassword, verifyPassword, validatePasswordStrength } from '@/lib/auth/password-utils'
+import { verifyOTP } from '@/lib/auth/otp-service'
 import { verifyTOTP } from '@/lib/auth/totp-service'
+import { createSession } from '@/lib/auth/session'
+import { randomInt } from 'node:crypto'
 
-/**
- * Generate a unique 10-digit account number
- */
 function generateAccountNumber(): string {
-  const prefix = '9'
-  const random = Math.floor(Math.random() * 900000000) + 100000000
-  return prefix + random.toString()
+  return `9${randomInt(100000000, 1000000000)}`
 }
 
-// POST /api/auth/signup - Create new user account
+function splitName(name: string | undefined) {
+  const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean)
+  return { firstName: parts[0] || 'Customer', lastName: parts.slice(1).join(' ') || 'User' }
+}
+
+function serializeUser(user: { id: string; email: string; firstName: string; lastName: string; phone: string | null; status: string }) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: `${user.firstName} ${user.lastName}`.trim(),
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    status: user.status,
+  }
+}
+
+function routingNumber() {
+  const value = process.env.BNK_ROUTING_NUMBER?.trim()
+  return value && /^\d{9}$/.test(value) ? value : '000000000'
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { action, email, password, name, phone, otp, userId } = await request.json()
+    const body = await request.json()
+    const action = String(body.action ?? '')
+    const email = String(body.email ?? '').trim().toLowerCase()
+    const password = String(body.password ?? '')
+    const userId = String(body.userId ?? '')
+    const otp = String(body.otp ?? '').trim()
 
-    // Initialize Supabase client
-    const supabase = createServiceClient()
+    if (!email && ['signup', 'login'].includes(action)) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    }
 
     if (action === 'signup') {
-      // Validate password strength
-      if (password.length < 8) {
-        return NextResponse.json(
-          { error: 'Password must be at least 8 characters' },
-          { status: 400 }
-        )
+      const strength = validatePasswordStrength(password)
+      if (!strength.isStrong) {
+        return NextResponse.json({ error: strength.errors.join('. ') }, { status: 400 })
       }
 
-      // Check if email already exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .single()
+      const existing = await prisma.user.findUnique({ where: { email } })
+      if (existing) return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 })
 
-      if (existingUser) {
-        return NextResponse.json(
-          { error: 'An account with this email already exists' },
-          { status: 400 }
-        )
+      const { firstName, lastName } = splitName(body.name)
+      const passwordHash = await hashPassword(password)
+      let accountNumber = generateAccountNumber()
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          const result = await prisma.$transaction(async tx => {
+            const user = await tx.user.create({
+              data: {
+                email,
+                passwordHash,
+                firstName,
+                lastName,
+                phone: body.phone ? String(body.phone).trim() : null,
+              },
+            })
+            const account = await tx.account.create({
+              data: {
+                userId: user.id,
+                accountType: 'checking',
+                accountNumber,
+                routingNumber: routingNumber(),
+                balance: 0,
+                availableBalance: 0,
+                currency: 'USD',
+                status: 'active',
+              },
+            })
+            await tx.notification.create({
+              data: {
+                userId: user.id,
+                title: 'Welcome to Crestline Capital',
+                message: `Your checking account ending in ${accountNumber.slice(-4)} has been created.`,
+                type: 'account',
+              },
+            })
+            return { user, account }
+          })
+
+          await createSession(result.user.id, request)
+          return NextResponse.json({
+            message: 'User created successfully',
+            userId: result.user.id,
+            accountNumber: result.account.accountNumber,
+            maskedAccountNumber: `****${result.account.accountNumber.slice(-4)}`,
+            authenticated: true,
+          }, { status: 201 })
+        } catch (error) {
+          if ((error as { code?: string }).code !== 'P2002') throw error
+          accountNumber = generateAccountNumber()
+        }
       }
 
-      // Hash password
-      const hashedPassword = await hashPassword(password)
-
-      // Create user in database
-      const { data, error } = await supabase
-        .from('users')
-        .insert([
-          {
-            email,
-            name,
-            password_hash: hashedPassword,
-            phone: phone || null,
-            role: 'user',
-            created_at: new Date().toISOString(),
-            last_login: null,
-            two_factor_enabled: false,
-          },
-        ])
-        .select()
-
-      if (error) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        )
-      }
-
-      const newUserId = data[0]?.id
-
-      // Auto-generate a checking account with zero balance for the new user
-      const fullAccountNumber = generateAccountNumber()
-      const accountNumber = fullAccountNumber.slice(-4)
-      const routingNumber = '021000021'
-
-      const { data: accountData, error: accountError } = await supabase
-        .from('accounts')
-        .insert([
-          {
-            user_id: newUserId,
-            name: 'Total Checking',
-            account_type: 'checking',
-            account_number: accountNumber,
-            full_account_number: fullAccountNumber,
-            routing_number: routingNumber,
-            balance: 0.00,
-            available_balance: 0.00,
-            interest_rate: 0.01,
-            status: 'active',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ])
-        .select()
-
-      if (accountError) {
-        console.error('[v0] Account creation error:', accountError)
-      }
-
-      // Create a welcome notification for the new user
-      await supabase.from('notifications').insert([
-        {
-          user_id: newUserId,
-          title: 'Welcome to Chase!',
-          message: `Your new checking account (****${accountNumber}) has been created. Your account number is ${fullAccountNumber}.`,
-          type: 'account',
-          is_read: false,
-          category: 'account',
-          data: { accountNumber: fullAccountNumber, accountType: 'checking' },
-          created_at: new Date().toISOString(),
-        },
-      ])
-
-      // Create a default credit score entry
-      await supabase.from('credit_scores').insert([
-        {
-          user_id: newUserId,
-          score: 750,
-          status: 'good',
-          trend: 'stable',
-          updated_at: new Date().toISOString(),
-        },
-      ])
-
-      console.log('[v0] New user registered:', {
-        userId: newUserId,
-        email,
-        accountNumber: fullAccountNumber,
-      })
-
-      return NextResponse.json({
-        message: 'User created successfully',
-        userId: newUserId,
-        accountNumber: fullAccountNumber,
-        maskedAccountNumber: `****${accountNumber}`,
-      })
+      return NextResponse.json({ error: 'Unable to allocate a unique account number' }, { status: 503 })
     }
 
     if (action === 'login') {
-      // Find user by email
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
+      if (!password) return NextResponse.json({ error: 'Password is required' }, { status: 400 })
 
-      if (error || !users || users.length === 0) {
-        return NextResponse.json(
-          { error: 'Invalid credentials' },
-          { status: 401 }
-        )
+      const user = await prisma.user.findUnique({ where: { email } })
+      if (!user || user.status !== 'active' || !(await verifyPassword(password, user.passwordHash))) {
+        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
       }
 
-      const user = users[0]
-
-      // Verify password
-      const passwordValid = await verifyPassword(password, user.password_hash)
-      if (!passwordValid) {
-        return NextResponse.json(
-          { error: 'Invalid credentials' },
-          { status: 401 }
-        )
-      }
-
-      // Check if TOTP 2FA is enabled
-      if (user.two_factor_enabled && user.totp_secret) {
+      if (user.totpEnabled && user.totpSecret) {
         return NextResponse.json({
           message: 'TOTP verification required',
           userId: user.id,
-          userName: user.name,
-          userRole: user.role,
+          userName: `${user.firstName} ${user.lastName}`.trim(),
+          userEmail: user.email,
           requiresTOTP: true,
           requiresOTP: false,
         })
       }
 
-      // Generate OTP
-      const otpCode = generateAndStoreOTP(user.id)
-
-      // In production, send via SMS/Email
-      console.log(`[v0] OTP sent to ${email}: ${otpCode}`)
-
+      await createSession(user.id, request)
+      const accounts = await prisma.account.findMany({ where: { userId: user.id }, orderBy: { openedAt: 'asc' } })
       return NextResponse.json({
-        message: 'OTP sent',
+        message: 'Authentication successful',
         userId: user.id,
-        userName: user.name,
-        userRole: user.role,
-        userEmail: user.email,
-        requiresOTP: true,
+        authenticated: true,
+        user: serializeUser(user),
+        accounts,
+        requiresOTP: false,
+        requiresTOTP: false,
       })
     }
 
     if (action === 'verify-otp') {
-      // Verify OTP code
-      const isValid = verifyOTP(userId, otp)
+      if (!userId || !otp) return NextResponse.json({ error: 'User ID and OTP are required' }, { status: 400 })
+      if (!(await verifyOTP(userId, otp))) return NextResponse.json({ error: 'Invalid or expired OTP' }, { status: 401 })
 
-      if (!isValid) {
-        return NextResponse.json(
-          { error: 'Invalid or expired OTP' },
-          { status: 401 }
-        )
-      }
-
-      // Update last login
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', userId)
-
-      if (updateError) {
-        return NextResponse.json(
-          { error: 'Failed to update login' },
-          { status: 500 }
-        )
-      }
-
-      // Fetch full user data for the session
-      const { data: userData } = await supabase
-        .from('users')
-        .select('id, name, email, role, phone')
-        .eq('id', userId)
-        .single()
-
-      // Fetch user accounts
-      const { data: userAccounts } = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('user_id', userId)
-
-      return NextResponse.json({
-        message: 'Authentication successful',
-        userId,
-        authenticated: true,
-        user: userData,
-        accounts: userAccounts || [],
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, firstName: true, lastName: true, phone: true, status: true },
       })
+      if (!user || user.status !== 'active') return NextResponse.json({ error: 'User not found' }, { status: 401 })
+
+      await createSession(user.id, request)
+      const accounts = await prisma.account.findMany({ where: { userId }, orderBy: { openedAt: 'asc' } })
+      return NextResponse.json({ message: 'Authentication successful', userId, authenticated: true, user: serializeUser(user), accounts })
     }
 
     if (action === 'verify-totp') {
-      // Find user
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('totp_secret, backup_codes')
-        .eq('id', userId)
+      if (!userId || !otp) return NextResponse.json({ error: 'User ID and TOTP are required' }, { status: 400 })
 
-      if (error || !users || users.length === 0) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 401 }
-        )
+      const user = await prisma.user.findUnique({ where: { id: userId } })
+      if (!user || user.status !== 'active' || !user.totpEnabled || !user.totpSecret) {
+        return NextResponse.json({ error: 'User not found or 2FA is not configured' }, { status: 401 })
       }
+      if (!verifyTOTP(user.totpSecret, otp)) return NextResponse.json({ error: 'Invalid TOTP code' }, { status: 401 })
 
-      const user = users[0]
-
-      if (!user.totp_secret) {
-        return NextResponse.json(
-          { error: '2FA is not configured' },
-          { status: 401 }
-        )
-      }
-
-      // Verify TOTP code
-      const isValid = verifyTOTP(user.totp_secret, otp)
-
-      if (!isValid) {
-        return NextResponse.json(
-          { error: 'Invalid TOTP code' },
-          { status: 401 }
-        )
-      }
-
-      // Update last login
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', userId)
-
-      if (updateError) {
-        return NextResponse.json(
-          { error: 'Failed to update login' },
-          { status: 500 }
-        )
-      }
-
-      // Fetch full user data
-      const { data: totpUserData } = await supabase
-        .from('users')
-        .select('id, name, email, role, phone')
-        .eq('id', userId)
-        .single()
-
-      const { data: totpAccounts } = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('user_id', userId)
-
-      return NextResponse.json({
-        message: 'TOTP verification successful',
-        userId,
-        authenticated: true,
-        user: totpUserData,
-        accounts: totpAccounts || [],
-      })
+      await createSession(user.id, request)
+      const accounts = await prisma.account.findMany({ where: { userId }, orderBy: { openedAt: 'asc' } })
+      return NextResponse.json({ message: 'TOTP verification successful', userId, authenticated: true, user: serializeUser(user), accounts })
     }
 
-    return NextResponse.json(
-      { error: 'Invalid action' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
-    console.error('[v0] Auth error:', error)
-    return NextResponse.json(
-      { error: 'Authentication failed' },
-      { status: 500 }
-    )
+    console.error('[BNK] Auth error:', error)
+    return NextResponse.json({ error: 'Authentication failed' }, { status: 500 })
   }
 }

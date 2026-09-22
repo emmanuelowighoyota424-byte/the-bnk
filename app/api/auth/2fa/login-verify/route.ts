@@ -1,106 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/prisma'
 import { verifyTOTP } from '@/lib/auth/totp-service'
+import { createSession } from '@/lib/auth/session'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, code, sessionToken, isBackupCode } = await request.json()
+    const { userId, code } = await request.json()
 
-    if (!email || !code || !sessionToken) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    if (!userId || !code) {
+      return NextResponse.json({ error: 'User ID and verification code are required' }, { status: 400 })
     }
 
-    const supabase = createServiceClient()
+    const user = await prisma.user.findUnique({
+      where: { id: String(userId) },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        status: true,
+        totpSecret: true,
+        totpEnabled: true,
+      },
+    })
 
-    // Get user with TOTP secret
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, email, totp_secret, backup_codes, two_factor_enabled')
-      .eq('email', email)
-      .single()
-
-    if (userError || !user || !user.two_factor_enabled) {
-      return NextResponse.json(
-        { error: 'User not found or 2FA not enabled' },
-        { status: 401 }
-      )
+    if (!user || user.status !== 'active' || !user.totpEnabled || !user.totpSecret) {
+      return NextResponse.json({ error: 'User not found or 2FA not enabled' }, { status: 401 })
     }
 
-    if (!user.totp_secret) {
-      return NextResponse.json(
-        { error: '2FA is not properly configured' },
-        { status: 401 }
-      )
+    if (!verifyTOTP(user.totpSecret, String(code).trim())) {
+      return NextResponse.json({ error: 'Invalid verification code' }, { status: 401 })
     }
 
-    let isValid = false
+    const accounts = await prisma.account.findMany({
+      where: { userId: user.id },
+      orderBy: { openedAt: 'asc' },
+    })
 
-    if (isBackupCode) {
-      // Verify backup code
-      if (!user.backup_codes) {
-        return NextResponse.json(
-          { error: 'No backup codes available' },
-          { status: 401 }
-        )
-      }
-
-      const backupCodes = JSON.parse(user.backup_codes)
-      const codeIndex = backupCodes.indexOf(code.toUpperCase())
-
-      if (codeIndex === -1) {
-        return NextResponse.json(
-          { error: 'Invalid backup code' },
-          { status: 401 }
-        )
-      }
-
-      isValid = true
-
-      // Remove used backup code
-      backupCodes.splice(codeIndex, 1)
-      await supabase
-        .from('users')
-        .update({ backup_codes: JSON.stringify(backupCodes) })
-        .eq('id', user.id)
-    } else {
-      // Verify TOTP code
-      isValid = verifyTOTP(user.totp_secret, code)
-    }
-
-    if (!isValid) {
-      return NextResponse.json(
-        { error: 'Invalid code' },
-        { status: 401 }
-      )
-    }
-
-    // Update session with 2FA verified flag
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .update({ two_factor_verified: true, updated_at: new Date().toISOString() })
-      .eq('token', sessionToken)
-      .select()
-      .single()
-
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Failed to update session' },
-        { status: 500 }
-      )
-    }
+    await createSession(user.id, request)
 
     return NextResponse.json({
       success: true,
       message: '2FA verification successful',
+      userId: user.id,
+      authenticated: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`.trim(),
+        phone: user.phone,
+      },
+      accounts,
     })
   } catch (error) {
-    console.error('[v0] Login 2FA verification error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('[BNK] Login 2FA verification error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

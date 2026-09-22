@@ -2,11 +2,7 @@
 const path = require('path');
 
 const nextConfig = {
-  serverExternalPackages: ['bcryptjs', 'speakeasy', 'qrcode'],
-  turbopack: {},
-  typescript: {
-    ignoreBuildErrors: false,
-  },
+  typescript: { ignoreBuildErrors: false },
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
