@@ -99,6 +99,7 @@ model UserSession {
   location         String?  @map("location")
   expiresAt        DateTime @map("expires_at")
   createdAt        DateTime @default(now()) @map("created_at")
+  lastActivityAt  DateTime @default(now()) @map("last_activity_at")
   revokedAt        DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
