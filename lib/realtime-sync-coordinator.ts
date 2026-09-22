@@ -1,6 +1,6 @@
 // Real-Time Sync Coordinator - Keeps all options synchronized
 
-interface SyncMessage {
+export interface SyncMessage {
   type: 'update' | 'refresh' | 'delete' | 'create'
   key: string
   data?: any
@@ -71,6 +71,10 @@ export class RealtimeSyncCoordinator {
     if (!this.isSyncing) {
       await this.processSyncQueue()
     }
+  }
+
+  async publishUpdate(key: string, data?: any) {
+    await this.publish({ type: 'update', key, data, timestamp: Date.now() })
   }
 
   /**

@@ -145,6 +145,8 @@ export function getProfileSettings(): ProfileSettings {
       biometricEnabled: false,
       sessionTimeout: 30,
       profilePicture: null,
+      totpBackupCodesCount: 0,
+      lastTwoFactorChange: null,
     }
   }
 
@@ -160,6 +162,8 @@ export function getProfileSettings(): ProfileSettings {
     biometricEnabled: false,
     sessionTimeout: 30,
     profilePicture: profile?.profilePicture || null,
+    totpBackupCodesCount: 0,
+    lastTwoFactorChange: null,
   }
 }
 

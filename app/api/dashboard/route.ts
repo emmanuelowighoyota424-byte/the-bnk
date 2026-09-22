@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
       },
 
       // Recent Activity
-      recentTransactions: recentTransactions.map(tx => ({
+      recentTransactions: recentTransactions.map((tx: any) => ({
         id: tx.id,
         description: tx.description,
         amount: tx.amount,
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
         total: bills.length,
         dueThisMonth: thisMonth.length,
         totalDueThisMonth,
-        upcoming: thisMonth.slice(0, 3).map(b => ({
+        upcoming: thisMonth.slice(0, 3).map((b: any) => ({
           id: b.id,
           payee: b.payee,
           amount: b.amount,
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
       // Notifications
       notifications: {
         unread: unreadNotifications,
-        recent: notifications.slice(0, 3).map(n => ({
+        recent: notifications.slice(0, 3).map((n: any) => ({
           id: n.id,
           title: n.title,
           message: n.message,

@@ -156,7 +156,7 @@ export class IPTrackingService {
       }
 
       // Save to database
-      const { error } = await this.supabase.from('login_history').insert([
+      const { error } = await this.supabase.from('login_history').insert(([
         {
           id: record.id,
           user_id: userId,
@@ -170,7 +170,7 @@ export class IPTrackingService {
           login_success: loginSuccess,
           suspicious_flags: suspiciousFlags,
         },
-      ])
+      ] as any))
 
       if (error) {
         console.error('[v0] Failed to log login attempt:', error)
@@ -216,12 +216,12 @@ export class IPTrackingService {
         const lastLogin = recentLogins[0]
 
         // Check for impossible travel
-        if (this.isImpossibleTravel(lastLogin.location_data, currentLocation)) {
+        if (this.isImpossibleTravel((lastLogin as any).location_data, currentLocation)) {
           flags.push('impossible_travel')
         }
 
         // Check for new country/city
-        if (lastLogin.location_data?.country !== currentLocation.country) {
+        if ((lastLogin as any).location_data?.country !== currentLocation.country) {
           flags.push('new_country')
         }
 

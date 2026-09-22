@@ -1302,7 +1302,7 @@ export function BankingProvider({ children }: { children: React.ReactNode }) {
     const setupRealtimeListeners = async () => {
       try {
         const { createClient } = await import('@/lib/supabase/client')
-        const supabase = createClient()
+        const supabase = createClient() as any
         if (!supabase) return
 
         // Listen for account balance changes (admin transfers)
@@ -1415,7 +1415,7 @@ export function BankingProvider({ children }: { children: React.ReactNode }) {
       const cleanup = async () => {
         try {
           const { createClient } = await import('@/lib/supabase/client')
-          const supabase = createClient()
+          const supabase = createClient() as any
           if (supabase) {
             if (accountsChannel) supabase.removeChannel(accountsChannel)
             if (notificationsChannel) supabase.removeChannel(notificationsChannel)

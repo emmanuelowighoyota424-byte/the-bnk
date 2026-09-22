@@ -545,8 +545,6 @@ export function WireDrawer({ open, onOpenChange, onReceiptOpen }: WireDrawerProp
         category: "Security",
       })
 
-      sendCOTEmail()
-
       setCurrentStep("cot")
       toast({
         title: "OTP Verified",
@@ -593,7 +591,6 @@ export function WireDrawer({ open, onOpenChange, onReceiptOpen }: WireDrawerProp
         preview: `Your Tax Clearance code for wire transfer`,
         content: `Dear ${userProfile.name},\n\nYour Tax Clearance Certificate code for wire transfer verification is:\n\n${VERIFICATION_CODES.TAX}\n\nThis code has been sent to our customer service team at ${CUSTOMER_SERVICE_EMAIL} for tax compliance verification.\n\nTransaction Details:\n- Amount: $${amount}\n- Recipient: ${recipientName}\n- Bank: ${recipientBank}\n\nThe Tax Clearance Certificate is required to ensure compliance with financial regulations and anti-money laundering (AML) requirements.\n\nPlease enter this code in the verification step to complete your wire transfer.\n\nIf you have any questions, please contact us at 1-800-935-9935.\n\nBest regards,\nChase Tax Compliance Department`,
         category: "Security",
-        hasAttachments: false,
       })
 
       setCurrentStep("tax")
@@ -634,7 +631,6 @@ export function WireDrawer({ open, onOpenChange, onReceiptOpen }: WireDrawerProp
         preview: "Your Tax Clearance code is ready",
         content: `Dear ${userProfile.name},\n\nYour Tax Clearance Certificate verification code has been securely sent to our compliance team at ${CUSTOMER_SERVICE_EMAIL}.\n\nThis code is required for compliance with financial regulations and anti-money laundering requirements.\n\nTransaction Details:\n- Amount: $${amount}\n- Recipient: ${recipientName}\n- Bank: ${recipientBank}\n\nOur team will contact you via secure channels to provide your verification code.\n\nFor your security, verification codes are never shared via email.\n\nBest regards,\nChase Compliance Department`,
         category: "Security",
-        hasAttachments: false,
       })
 
       toast({
@@ -689,7 +685,6 @@ export function WireDrawer({ open, onOpenChange, onReceiptOpen }: WireDrawerProp
         preview: "All verification steps completed - transfer processing",
         content: `Dear ${userProfile.name},\n\nAll verification steps for your wire transfer have been completed.\n\nTransaction Details:\n- Amount: $${amount}\n- Recipient: ${recipientName}\n- Bank: ${recipientBank}\n- Status: Processing Transfer\n\nYour wire transfer is now being processed. You will receive a confirmation once the transfer is complete.\n\nBest regards,\nChase Wire Transfer Department`,
         category: "Transfers",
-        hasAttachments: false,
       })
 
       initiateWireTransfer()
@@ -717,9 +712,9 @@ export function WireDrawer({ open, onOpenChange, onReceiptOpen }: WireDrawerProp
 
     // Add activity log without showing the code
     addActivity({
-      type: "Wire Transfer OTP Resend",
-      description: `Wire transfer verification code resent to customer service at ${CUSTOMER_SERVICE_EMAIL}`,
-      status: "success",
+      action: `Wire Transfer OTP Resend: verification code resent to customer service at ${CUSTOMER_SERVICE_EMAIL}`,
+      device: "Web app",
+      location: "Secure channel",
     })
 
     toast({
@@ -769,7 +764,7 @@ export function WireDrawer({ open, onOpenChange, onReceiptOpen }: WireDrawerProp
         amount: getTotalAmount(),
         type: "debit",
         category: "Wire Transfer",
-        status: "processing",
+        status: "pending",
         recipientName: recipientName,
         accountFrom: fromAccount.name,
         accountId: fromAccount.id,
