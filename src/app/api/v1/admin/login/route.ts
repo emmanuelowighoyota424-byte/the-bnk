@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { signAccessToken, signRefreshToken, setTokenCookie, logAudit, checkRateLimit } from '@/lib/auth';
 import { successResponse, errorResponse, validateBody, unauthorizedResponse } from '@/lib/api-utils';
+import { randomBytes, createHash } from 'node:crypto';
 
 const adminLoginSchema = z.object({ email: z.string().email(), password: z.string().min(1) });
 
@@ -47,7 +48,7 @@ async function ensureConfiguredAdmin(email: string) {
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    if (!checkRateLimit(`admin-login:${ip}`, 100, 15 * 60 * 1000)) return errorResponse('Too many attempts', 429);
+    if (!checkRateLimit(`admin-login:${ip}`, 10, 15 * 60 * 1000)) return errorResponse('Too many attempts', 429);
 
     const body = await request.json();
     const v = validateBody(adminLoginSchema, body);
@@ -67,8 +68,9 @@ export async function POST(request: Request) {
     if (!valid) return unauthorizedResponse('Invalid credentials');
 
     await prisma.adminUser.update({ where: { id: admin.id }, data: { lastLoginAt: new Date() } });
-    const accessToken = await signAccessToken({ sub: admin.id, email: admin.email, role: 'admin' });
-    const refreshToken = await signRefreshToken({ sub: admin.id, email: admin.email, role: 'admin' });
+    const refreshToken = randomBytes(32).toString('base64url');
+    const session = await prisma.adminSession.create({ data: { adminId: admin.id, tokenHash: createHash('sha256').update(refreshToken).digest('hex'), ipAddress: ip, userAgent: request.headers.get('user-agent') || undefined, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }, select: { id: true } });
+    const accessToken = await signAccessToken({ sub: admin.id, email: admin.email, role: 'admin', sid: session.id });
 
     // Keep administrator authentication separate from the customer access cookie.
     // This prevents a customer login/logout or token refresh from replacing an admin session.
