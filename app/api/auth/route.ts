@@ -5,6 +5,7 @@ import { createAuthChallenge, getChallenge, consumeChallenge, recordChallengeFai
 import { createAuthenticatedSession } from '@/lib/auth'
 import { generateAccountNumber } from '@/lib/account-number'
 import speakeasy from 'speakeasy'
+import { Resend } from 'resend'
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,6 +71,22 @@ export async function POST(request: NextRequest) {
       })
       await createAuthenticatedSession(user.id, user.email, ip, ua)
       return NextResponse.json({ authenticated: true, userId: user.id }, { status: 201 })
+    }
+
+    if (action === 'request-password-reset') {
+      const generic = NextResponse.json({ message: 'If an account exists, a reset link will arrive shortly.' })
+      if (!email || !(await consumePersistentRateLimit(`password-reset:${ip}`, 5, 15 * 60 * 1000))) return generic
+      const user = await prisma.user.findUnique({ where: { email } })
+      if (!user) return generic
+      await prisma.authChallenge.updateMany({ where: { userId: user.id, purpose: 'PASSWORD_RESET', consumedAt: null }, data: { consumedAt: new Date() } })
+      const challenge = await createAuthChallenge({ userId: user.id, purpose: 'PASSWORD_RESET', type: 'PASSWORD_RESET', ipAddress: ip, userAgent: ua, maxAttempts: 5 })
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin
+      const resetUrl = `${appUrl}/reset-password?challenge=${encodeURIComponent(challenge.id)}&token=${encodeURIComponent(challenge.secret)}`
+      if (process.env.RESEND_API_KEY) {
+        const resend = new Resend(process.env.RESEND_API_KEY)
+        await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL || 'Crestline Capital <security@resend.dev>', to: email, subject: 'Reset your Crestline Capital password', html: `<p>Use the secure link below to reset your password. It expires in 5 minutes.</p><p><a href="${resetUrl.replace(/"/g, '&quot;')}">Reset password</a></p>` })
+      }
+      return generic
     }
 
     if (action === 'reset-password') {
