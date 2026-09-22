@@ -258,6 +258,7 @@ export function LinkExternalDrawer({ open, onOpenChange }: LinkExternalDrawerPro
         name: `${bankName} ${accountType}`,
         type: "External",
         balance: randomBalance,
+        availableBalance: randomBalance,
         accountNumber: `...${accountNumber.slice(-4)}`,
         routingNumber: routingNumber,
       })

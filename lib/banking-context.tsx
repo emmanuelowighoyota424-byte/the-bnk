@@ -73,6 +73,8 @@ export type UserProfile = {
   currency: string
   timezone: string
   avatarUrl?: string // Added for avatar
+  passwordLastChanged?: string
+  pinLastChanged?: string
 }
 
 export type SavingsGoal = {
@@ -104,6 +106,7 @@ export type Payee = {
   autopay: boolean
   nextDueDate?: string
   amount?: number
+  lastAmount?: number
 }
 
 export type ZelleContact = {
@@ -359,7 +362,7 @@ type BankingContextType = {
   // Savings Goals
   savingsGoals: SavingsGoal[]
   addSavingsGoal: (goal: Omit<SavingsGoal, "id">) => void
-  updateSavingsGoal: (goalId: string, amount: number) => void
+  updateSavingsGoal: (goalId: string, amountOrUpdates: number | Partial<SavingsGoal>) => void
   deleteSavingsGoal: (goalId: string) => void
 
   // Linked Devices
@@ -2015,9 +2018,15 @@ export function BankingProvider({ children }: { children: React.ReactNode }) {
     setSavingsGoals((prev) => [...prev, newGoal])
   }, [])
 
-  const updateSavingsGoal = useCallback((goalId: string, amount: number) => {
+  const updateSavingsGoal = useCallback((goalId: string, amountOrUpdates: number | Partial<SavingsGoal>) => {
     setSavingsGoals((prev) =>
-      prev.map((goal) => (goal.id === goalId ? { ...goal, currentAmount: goal.currentAmount + amount } : goal)),
+      prev.map((goal) => {
+        if (goal.id !== goalId) return goal
+        if (typeof amountOrUpdates === 'number') {
+          return { ...goal, currentAmount: goal.currentAmount + amountOrUpdates }
+        }
+        return { ...goal, ...amountOrUpdates }
+      }),
     )
   }, [])
 

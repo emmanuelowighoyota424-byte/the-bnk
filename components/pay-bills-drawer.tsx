@@ -100,7 +100,7 @@ export function PayBillsDrawer({ open, onOpenChange, onReceiptOpen }: PayBillsDr
 
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0]
-    const duePayments = scheduledPayments.filter((p) => p.status === "scheduled" && p.date <= today)
+    const duePayments = scheduledPayments.filter((p) => p.status === "scheduled" && p.scheduledDate <= today)
 
     if (duePayments.length > 0) {
       addNotification({
@@ -177,11 +177,12 @@ export function PayBillsDrawer({ open, onOpenChange, onReceiptOpen }: PayBillsDr
         if (frequency !== "once") {
           addScheduledPayment({
             payeeId: selectedPayee,
-            payeeName: payee.name,
+            payee: payee.name,
             amount: Number(amount),
             scheduledDate: getNextDate(date, frequency),
             frequency,
-            fromAccountId: selectedAccount,
+            accountId: selectedAccount,
+            category: payee.category,
           })
         }
 
@@ -257,6 +258,7 @@ export function PayBillsDrawer({ open, onOpenChange, onReceiptOpen }: PayBillsDr
       accountNumber: "****" + newPayeeAccount.slice(-4),
       category: newPayeeCategory,
       lastAmount: 0,
+      autopay: false,
     })
 
     toast({
@@ -445,13 +447,13 @@ export function PayBillsDrawer({ open, onOpenChange, onReceiptOpen }: PayBillsDr
                 <div key={payment.id} className="p-4 bg-card rounded-lg border">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium">{payment.payeeName}</p>
+                      <p className="font-medium">{payment.payee}</p>
                       <p className="text-sm text-muted-foreground">
                         ${(payment.amount ?? 0).toFixed(2)} • {payment.frequency}
                       </p>
                       <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
-                        Next: {new Date(payment.date).toLocaleDateString()}
+                        Next: {new Date(payment.scheduledDate).toLocaleDateString()}
                       </div>
                     </div>
                     <Button

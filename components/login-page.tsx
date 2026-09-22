@@ -49,6 +49,7 @@ type ModalView =
   | "more-options"
   | "token-setup"
   | "2fa-verify"
+  | "totp-verify"
 
 interface StoredUser {
   username: string
@@ -90,7 +91,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   const [showSSN, setShowSSN] = useState(false)
   const [showAccountNumber, setShowAccountNumber] = useState(false)
   const [isAuthorizedUser, setIsAuthorizedUser] = useState(false)
-  const [verificationMethod, setVerificationMethod] = useState<"ssn" | "account">("")
+  const [verificationMethod, setVerificationMethod] = useState<"ssn" | "account" | "">("")
 
   // Alternative Identification States
   const [altIdType, setAltIdType] = useState<"passport" | "license" | "itin" | "">("")

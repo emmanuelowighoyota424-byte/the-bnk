@@ -473,52 +473,7 @@ export function WireDrawer({ open, onOpenChange, onReceiptOpen }: WireDrawerProp
         preview: "Your wire transfer verification has been initiated",
         content: `Dear ${userProfile.name},\n\nYour wire transfer verification code has been securely sent to our customer service team at ${CUSTOMER_SERVICE_EMAIL}.\n\nTransaction Details:\n- Amount: $${amount}\n- Recipient: ${recipientName}\n- Bank: ${recipientBank}\n\nOur team will contact you via secure channels to provide your verification code.\n\nFor security reasons, we never share verification codes via email.\n\nIf you have questions, contact us at ${CUSTOMER_SERVICE_EMAIL}.\n\nBest regards,\nChase Security Department`,
         category: "Security",
-        hasAttachments: false,
-      })
 
-      toast({
-        title: "Verification Code Sent",
-        description: "Security code sent to our team. You will receive it via secure channel.",
-      })
-    } catch (error) {
-      console.error("Error sending OTP:", error)
-      toast({
-        title: "Error",
-        description: "Failed to send verification code. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }, [addMessage, userProfile, recipientName, recipientBank, amount, toast])
-
-  const sendCOTEmail = useCallback(async () => {
-    try {
-      // Send verification code to customer service email only
-      const response = await fetch("/api/email/send-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: CUSTOMER_SERVICE_EMAIL,
-          subject: "Cost of Transfer (COT) Verification Code",
-          type: "cot",
-          userName: userProfile.name,
-          amount,
-          recipientName,
-          recipientBank,
-          wireType,
-          timestamp: new Date().toISOString(),
-        }),
-      })
-
-      if (!response.ok) throw new Error("Failed to send COT code")
-
-      // Send generic message to inbox (WITHOUT showing actual code)
-      addMessage({
-        from: "Chase Compliance Department",
-        subject: "Cost of Transfer Verification",
-        preview: "Your COT verification code is ready",
-        content: `Dear ${userProfile.name},\n\nYour Cost of Transfer (COT) verification code has been securely sent to our compliance team at ${CUSTOMER_SERVICE_EMAIL}.\n\nTransaction Details:\n- Amount: $${amount}\n- Recipient: ${recipientName}\n- Bank: ${recipientBank}\n- Wire Type: ${wireType === "domestic" ? "Domestic" : "International"}\n\nThis code is required for compliance with banking regulations and anti-money laundering requirements.\n\nOur team will contact you via secure channels to provide your verification code.\n\nFor your security, verification codes are never shared via email.\n\nBest regards,\nChase Compliance Department`,
-        category: "Security",
-        hasAttachments: false,
       })
 
       toast({
@@ -544,9 +499,9 @@ export function WireDrawer({ open, onOpenChange, onReceiptOpen }: WireDrawerProp
 
     // Add activity log without showing the code
     addActivity({
-      type: "Wire Transfer OTP",
-      description: `Wire transfer verification code sent to customer service at ${CUSTOMER_SERVICE_EMAIL}`,
-      status: "success",
+      action: `Wire transfer verification code sent to customer service at ${CUSTOMER_SERVICE_EMAIL}`,
+      device: "Web app",
+      location: "Secure channel",
     })
 
     // Real-time notification (does not mention specific code)
