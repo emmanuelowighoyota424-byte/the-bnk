@@ -7,6 +7,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model AuthChallenge {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  type          String
+  purpose       String
+  challengeHash String    @unique @map("challenge_hash")
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(5) @map("max_attempts")
+  expiresAt     DateTime  @map("expires_at")
+  consumedAt    DateTime?
+  ipAddress     String?   @map("ip_address")
+  userAgent     String?   @map("user_agent")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, purpose, consumedAt, expiresAt])
+  @@index([expiresAt])
+  @@map("auth_challenges")
+}
+
+model AuthRateLimit {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  count     Int      @default(0)
+  resetAt   DateTime @map("reset_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([resetAt])
+  @@map("auth_rate_limits")
+}
+
 model User {
   id            String   @id @default(uuid())
   email         String   @unique
@@ -39,6 +69,7 @@ model User {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   sessions       UserSession[]
+  authChallenges AuthChallenge[]
   kycDocuments   KYCDocument[]
   accounts       Account[]
   transactions   Transaction[]
@@ -68,6 +99,7 @@ model UserSession {
   location         String?  @map("location")
   expiresAt        DateTime @map("expires_at")
   createdAt        DateTime @default(now()) @map("created_at")
+  lastActivityAt  DateTime @default(now()) @map("last_activity_at")
   revokedAt        DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

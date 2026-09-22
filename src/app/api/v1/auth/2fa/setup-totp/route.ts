@@ -1,17 +1,17 @@
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import prisma from '@/lib/prisma';
+import { getCurrentUser, logAudit } from '@/lib/auth';
 import { successResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils';
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    const userId = request.headers.get('x-user-id');
-    if (!userId) return unauthorizedResponse();
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await getCurrentUser();
     if (!user) return unauthorizedResponse();
-    const secret = speakeasy.generateSecret({ name: `The Bnk:${user.email}`, length: 20 });
-    await prisma.user.update({ where: { id: userId }, data: { totpSecret: secret.base32 } });
-    const qrDataUrl = await QRCode.toDataURL(secret.otpauth_url!);
-    return successResponse({ secret: secret.base32, qrCode: qrDataUrl, otpauthUrl: secret.otpauth_url });
+    const secret = speakeasy.generateSecret({ name: `Crestline Capital:${user.email}`, length: 20 });
+    await prisma.user.update({ where: { id: user.id }, data: { totpSecret: secret.base32, totpEnabled: false } });
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url!);
+    await logAudit({ actorId: user.id, actorType: 'user', action: '2FA_SETUP_STARTED', entityType: 'users', entityId: user.id });
+    return successResponse({ secret: secret.base32, qrCode, otpauthUrl: secret.otpauth_url });
   } catch (e) { console.error(e); return errorResponse('Internal server error', 500); }
 }
