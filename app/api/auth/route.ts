@@ -6,7 +6,8 @@ import { hashPassword, verifyPassword, validatePasswordStrength } from '@/lib/au
 import { verifyOTP } from '@/lib/auth/otp-service'
 import { verifyTOTP } from '@/lib/auth/totp-service'
 import { createSession } from '@/lib/auth/session'
-import { randomInt } from 'node:crypto'
+import { randomBytes, randomInt } from 'node:crypto'
+import { Resend } from 'resend'
 
 function generateAccountNumber(): string {
   return `9${randomInt(100000000, 1000000000)}`
@@ -42,9 +43,63 @@ export async function POST(request: NextRequest) {
     const password = String(body.password ?? '')
     const userId = String(body.userId ?? '')
     const otp = String(body.otp ?? '').trim()
+    const token = String(body.token ?? '').trim()
 
-    if (!email && ['signup', 'login'].includes(action)) {
+    if (!email && ['signup', 'login', 'request-password-reset'].includes(action)) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    }
+
+    if (action === 'request-password-reset') {
+      const user = await prisma.user.findUnique({ where: { email }, select: { id: true, firstName: true } })
+      const genericResponse = NextResponse.json({ message: 'If an account exists, a reset link will arrive shortly.' })
+      if (!user) return genericResponse
+
+      await prisma.transactionVerificationCode.updateMany({
+        where: { userId: user.id, type: 'password_reset', usedAt: null },
+        data: { usedAt: new Date() },
+      })
+      const rawToken = randomBytes(32).toString('hex')
+      await prisma.transactionVerificationCode.create({
+        data: {
+          userId: user.id,
+          type: 'password_reset',
+          codeHash: await hashPassword(rawToken),
+          requestHash: await hashPassword(`${user.id}:${Date.now()}`),
+          expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+        },
+      })
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin
+      const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(email)}`
+      const resendKey = process.env.RESEND_API_KEY
+      if (resendKey) {
+        const resend = new Resend(resendKey)
+        await resend.emails.send({
+          from: process.env.RESEND_FROM_EMAIL || 'Crestline Capital <security@resend.dev>',
+          to: email,
+          subject: 'Reset your Crestline Capital password',
+          html: `<p>Hi ${user.firstName},</p><p>Use the secure link below to reset your Crestline Capital password. It expires in 30 minutes.</p><p><a href="${resetUrl}">Reset password</a></p><p>If you did not request this, you can ignore this email.</p>`,
+        })
+      } else {
+        console.warn('[Crestline] RESEND_API_KEY is not configured; password reset email was not sent.')
+      }
+      return genericResponse
+    }
+
+    if (action === 'reset-password') {
+      if (!email || !token || !password) return NextResponse.json({ error: 'Email, reset token, and new password are required' }, { status: 400 })
+      const strength = validatePasswordStrength(password)
+      if (!strength.isStrong) return NextResponse.json({ error: strength.errors.join('. ') }, { status: 400 })
+      const user = await prisma.user.findUnique({ where: { email } })
+      if (!user) return NextResponse.json({ error: 'Invalid or expired reset link' }, { status: 400 })
+      const resetCode = await prisma.transactionVerificationCode.findFirst({ where: { userId: user.id, type: 'password_reset', usedAt: null, expiresAt: { gt: new Date() } }, orderBy: { createdAt: 'desc' } })
+      if (!resetCode || !(await verifyPassword(token, resetCode.codeHash))) return NextResponse.json({ error: 'Invalid or expired reset link' }, { status: 400 })
+      await prisma.$transaction([
+        prisma.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(password) } }),
+        prisma.transactionVerificationCode.update({ where: { id: resetCode.id }, data: { usedAt: new Date() } }),
+        prisma.userSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } }),
+      ])
+      return NextResponse.json({ message: 'Password updated. You can now sign in.' })
     }
 
     if (action === 'signup') {
