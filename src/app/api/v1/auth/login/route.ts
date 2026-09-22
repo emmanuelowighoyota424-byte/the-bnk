@@ -1,30 +1,44 @@
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { signAccessToken, signRefreshToken, setTokenCookie, createUserSession, logAudit, checkRateLimit } from '@/lib/auth';
+import { verifyAndUpgradePassword } from '@/lib/auth/password-utils';
+import { createAuthChallenge, consumePersistentRateLimit } from '@/lib/auth/challenge';
+import { createAuthenticatedSession, logAudit } from '@/lib/auth';
 import { successResponse, errorResponse, validateBody, unauthorizedResponse } from '@/lib/api-utils';
 
-const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) });
+const schema = z.object({ email: z.string().email().max(254), password: z.string().min(1).max(128) });
 
 export async function POST(request: Request) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    if (!checkRateLimit(`login:${ip}`, 100, 15*60*1000)) return errorResponse('Too many attempts', 429);
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ua = request.headers.get('user-agent') || undefined;
     const body = await request.json();
-    const v = validateBody(loginSchema, body);
+    const v = validateBody(schema, body);
     if (!v.success) return errorResponse('Validation failed', 400, v.errors);
-    const { email, password } = v.data;
+    const email = v.data.email.trim().toLowerCase();
+
+    const allowed = await consumePersistentRateLimit(`login:ip:${ip}`, 10, 15 * 60 * 1000)
+      && await consumePersistentRateLimit(`login:email:${email}`, 10, 15 * 60 * 1000);
+    if (!allowed) return errorResponse('Too many attempts. Try again later.', 429);
+
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || user.status==='suspended'||user.status==='closed') return unauthorizedResponse('Invalid credentials');
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) { await logAudit({ actorId: user.id, actorType: 'user', action: 'user.login_failed', entityType: 'users', entityId: user.id, ipAddress: ip }); return unauthorizedResponse('Invalid credentials'); }
-    if (user.totpEnabled) { const tempToken = await signAccessToken({ sub: user.id, email: user.email }); return successResponse({ requiresTotp: true, tempToken }); }
-    const accessToken = await signAccessToken({ sub: user.id, email: user.email });
-    const refreshToken = await signRefreshToken({ sub: user.id, email: user.email });
-    await createUserSession(user.id, refreshToken, ip);
-    setTokenCookie('access_token', accessToken, 15*60);
-    setTokenCookie('refresh_token', refreshToken, 7*24*60*60);
-    await logAudit({ actorId: user.id, actorType: 'user', action: 'user.login', entityType: 'users', entityId: user.id, ipAddress: ip });
+    if (!user || user.status !== 'active') return unauthorizedResponse('Invalid credentials');
+    const result = await verifyAndUpgradePassword(v.data.password, user.passwordHash);
+    if (!result.valid) {
+      await logAudit({ actorId: user.id, actorType: 'user', action: 'LOGIN_FAILURE', entityType: 'users', entityId: user.id, ipAddress: ip, userAgent: ua });
+      return unauthorizedResponse('Invalid credentials');
+    }
+    if (result.upgradedHash) await prisma.user.update({ where: { id: user.id }, data: { passwordHash: result.upgradedHash } });
+
+    if (user.totpEnabled && user.totpSecret) {
+      const challenge = await createAuthChallenge({ userId: user.id, purpose: 'LOGIN_2FA', type: 'TOTP', ipAddress: ip, userAgent: ua, maxAttempts: 5 });
+      return successResponse({ requiresTotp: true, challengeId: challenge.id, expiresAt: challenge.expiresAt });
+    }
+
+    await createAuthenticatedSession(user.id, user.email, ip, ua);
+    await logAudit({ actorId: user.id, actorType: 'user', action: 'LOGIN_SUCCESS', entityType: 'users', entityId: user.id, ipAddress: ip, userAgent: ua });
     return successResponse({ user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, bnkTag: user.bnkTag, kycStatus: user.kycStatus, kycTier: user.kycTier, status: user.status } });
-  } catch (e) { console.error(e); return errorResponse('Internal server error', 500); }
+  } catch (e) {
+    console.error(e);
+    return errorResponse('Internal server error', 500);
+  }
 }
