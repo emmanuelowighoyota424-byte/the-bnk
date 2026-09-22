@@ -16,6 +16,9 @@ interface OpenAccountRequest {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServiceClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database is not configured' }, { status: 503 })
+    }
     const body: OpenAccountRequest = await request.json()
 
     const { userId, accountType, initialDeposit, accountName } = body

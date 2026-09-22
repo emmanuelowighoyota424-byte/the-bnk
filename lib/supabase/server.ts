@@ -1,2 +1,2 @@
-export function createClient(): null { return null }
+export function createClient(): any { return null }
 export const createServiceClient = createClient
