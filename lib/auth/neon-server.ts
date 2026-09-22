@@ -3,7 +3,7 @@ import { createNeonAuth } from '@neondatabase/auth/next/server';
 export const neonAuth = createNeonAuth({
   baseUrl: process.env.NEON_AUTH_BASE_URL!,
   cookies: {
-    secret: process.env.NEON_AUTH_COOKIE_SECRET!,
+    secret: process.env.NEON_AUTH_COOKIE_SECRET || 'build-only-cookie-secret-32-characters',
     sessionDataTtl: 300, // 5 minutes session cache
   },
 });
